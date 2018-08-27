@@ -1,0 +1,701 @@
+
+mod ATTRIBUTES is
+    pr PRED .
+    pr RANDBLIST . 
+    pr APMAUDE .
+
+    --- states of an actor
+    sort Status .
+    ops pending initialized ready       : -> Status . 
+    ops sending sent receiving received : -> Status . 
+    ops completed aborted               : -> Status .
+
+    --- Attributes
+    op status:_      : Status    -> Attribute [format (m o d)] .  
+    op lists:_       : BLList    -> Attribute [format (m o d)] .  
+    op round:_       : Nat       -> Attribute [format (m o d)] .  
+    op challenge:_   : Nat       -> Attribute [format (m o d)] .
+    op response:_    : MaybeBit  -> Attribute [format (m o d)] .
+    op mbit-cnt:_    : Nat       -> Attribute [format (m o d)] .
+    op atbound-cnt:_ : Nat       -> Attribute [format (m o d)] .
+    op mtbound-cnt:_ : Nat       -> Attribute [format (m o d)] .
+    op mtime-sent:_  : Float     -> Attribute [format (m o d)] .  
+    op atime-sent:_  : Float     -> Attribute [format (m o d)] .  
+    op mtime-recv:_  : Float     -> Attribute [format (m o d)] .  
+    op atime-recv:_  : Float     -> Attribute [format (m o d)] .  
+ ---   op ccnt:_        : Nat       -> Attribute [format (m o d)] .  
+endm
+
+mod CONFIG is
+  ex ATTRIBUTES .
+  
+    --- Additional configuration fields
+    op rounds : Nat   -> Config [format (nb! o)] .
+    op h      : Float -> Config [format (nb! o)] .
+    op ccnt   : Nat   -> Config [format (nb! o)] .  
+
+    --- Object names
+    op v : -> ActorName .   --- verifier
+    op p : -> ActorName .   --- prover
+
+	--- Message Contents
+    ops initialize forwardHash beginRound recordTime sendChallenge : -> Content . 
+    ops recordHash : BLList -> Content .
+    op  response   : MaybeBit -> Content .
+    op  challenge  : Nat -> Content .
+endm
+
+mod PARAMS is
+    pr FLOAT .
+    pr NAT .
+    
+    ---- Global parameters
+    ---- Protocol 
+    op HASHTYPE  : -> [Nat]   .  ---- How the shared bit sequences are generated
+    op BBASE     : -> [NzNat] .  ---- The bit base k 
+    op ROUNDS    : -> [Nat]   .  ---- The number of rounds n (length of a bit sequence)
+    op DEPTH     : -> [NzNat] .  ---- The number of bit sequences l 
+    op MAXRTT    : -> [Float] .  ---- The maximum RTT allowed (time upper bound)
+    op NOISE     : -> [Float] .  ---- The noise bias (probability of destroying a bit)
+
+    ---- Verifier 
+    op  VDCLK                   : -> [Bool]  .  ---- Is the verifier's clock discrete?
+    ops sampleX sampleY sampleZ : -> [Float] .  ---- Verifier action delays X, Y and Z 
+    op  CDELAY                  : Nat -> [Float] .  ---- Intentional challenge send delay
+
+    ---- Prover 
+    op PTYPE    : -> [Nat]   .  ---- Prover's behavior: honest or guessing 
+    op sampleRD : -> [Float] .  ---- H: the prover's time differential from the bound 
+    op GAHEAD   : -> [Bool]  .  ---- Is the prover guessing ahead?
+    op gATD     : Float -> [Float] .  ---- Guess-ahead time differential
+    ---op GATD     : -> [Float] .  ---- The guessing-ahead time differential 
+
+    ---- Acceptance thresholds
+    op MIN-MBR   : -> [Float] .    ---- Acceptance threshold based on correctness of bits
+    op MIN-MTR   : -> [Float] .    ---- .. .. .. based on measured time
+    op MIN-ATR   : -> [Float] .    ---- .. .. .. based on actual time
+
+    --- Computed quantities
+    op xDelay    : Float -> [Float] .  ---- (One-way) Trasmission delay
+    op VDCDELAY  : -> [Float] .  ---- Verfier's discrete clock delay
+
+endm
+
+mod DBP-BEHAVIOR is
+  pr CONFIG .
+  pr PARAMS .
+  pr SAMPLER .
+  
+  vars xR xR' : NzNat . 
+  vars cR N iG N' N'' iR C : Nat . 
+  vars L : BList .
+  vars LL LL' LL0 LL1 : BLList .
+  vars B B0 B1 : Bit .
+  vars cP cP' : MaybeBit .
+  var  AS : AttributeSet . 
+  vars tG fB fH tD tX tS tS' tR tR' tRTT : Float .
+  vars SL SL' : ScheduleList . 
+  var ST : Status .
+  vars mBit? atBound? mtBound? dB : Bool . 
+   
+  ***** Phase I
+  --- Generate random lists and initialize the round counter
+  rl [Initialize] : 
+    rounds(xR)
+    <name: v |
+	       status: pending,
+	       round: cR,
+	       lists: LL,
+	       mbit-cnt: N, 
+	       atbound-cnt: N', 
+	       mtbound-cnt: N'', 
+	       AS >
+    { tG | SL }
+    (v <- initialize)
+    => rounds(xR)
+       <name: v |
+	         status: initialized,
+	         round: xR,
+	         lists: if HASHTYPE == 0 then 
+                    ---- Random lists (The standard protocol)
+                    genRandKaryListsByRounds(BBASE, DEPTH, ROUNDS)
+                  else 
+                    ---- Fully complementary lists
+                    genRandCKaryListsByRounds(BBASE, DEPTH, ROUNDS) 
+                  fi ,
+	         mbit-cnt: 0, 
+	         atbound-cnt: 0, 
+	         mtbound-cnt: 0, 
+	         AS >
+       { tG | SL }
+       (v <- forwardHash) 
+       [print "Initialize"] .
+
+  --- Forward generated lists to prover
+  rl [ForwardHash] : 
+    <name: v |
+	       status: initialized,
+	       lists: LL,
+	       AS >
+    { tG | SL }
+    (v <- forwardHash)
+    => <name: v |
+            status: ready,
+            lists: LL,
+            AS >
+         { tG | SL }
+         (p <- recordHash(LL)) 
+         [print "ForwardHash"] .
+
+  --- Record received lists at the prover
+  rl [RecordHash] : 
+    <name: p |
+        status: pending,
+        lists: LL,
+        AS >
+    { tG | SL }
+    (p <- recordHash(LL'))
+    => <name: p |
+            status: ready,
+            lists: LL',
+            AS >
+       { tG | SL }
+       (v <- beginRound) 
+       [print "RecordHash"] .
+
+
+  ***** Phase II
+  ---- Begin an authentication round 
+  ---- (samples X, and randomly selects the challenge [0 .. DEPTH - 1])
+  rl [BeginRound] :
+    rounds(xR)
+    <name: v |
+	       status: ready,
+	       round: iR,
+         atime-sent: tS  ,
+         mtime-sent: tS' ,
+         atime-recv: tR  ,
+         mtime-recv: tR' ,
+	       challenge: C,
+	       AS >  
+    { tG | SL }
+    (v <- beginRound)
+    => rounds(p(xR))
+	     <name: v |
+	         status: sending,
+	         round: p(xR),
+           atime-sent: sampleX, ----(floor(tG) + 1.0 + sampleX) ,
+           mtime-sent: 0.0 ,
+           atime-recv: 0.0 ,
+           mtime-recv: 0.0 ,
+           challenge: sampleUniWithInt(DEPTH) ,
+	         AS >
+	     mytick(insert( { tG | SL }, 
+	         [ floor(tG) + 1.0 + CDELAY(ROUNDS - p(xR)), (v <- sendChallenge) , 0] )) 
+	     [print tG " | " SL ": BeginRound - " xR] .
+
+  --- sending out a challenge
+  rl [Challenge] :
+    h(fH)
+    rounds(iR)
+    <name: v |
+        status: sending,
+        lists: (L ; LL),
+        atime-sent: tS,
+        challenge: C, AS >
+    { tG | SL }
+    (v <- sendChallenge)
+    => h(fH)
+       rounds(iR)
+       <name: v |
+            status: sent,
+            lists: (LL ; L),
+            atime-sent: (tG + tS), 
+            challenge: C, AS >
+       mytick(insert(insert( { tG | SL } ,
+              [ floor(tG) + 1.0, (v <- recordTime), 0]),  
+              [ tG + tS + xDelay(fH), (p <- challenge(C)), 0])) 
+       [print tG " | " SL ": Challenge - " C] .
+
+  --- Record the (measured) time at which the challenge was sent (samples Y)
+  rl [RecordTimeSent] :
+    <name: v |
+        status: sent,
+        atime-sent: tS,
+        mtime-sent: tS', AS >
+    { tG | SL }
+    (v <- recordTime)
+    => <name: v |
+            status: receiving,
+            atime-sent: tS,
+            mtime-sent: (tG + sampleY),  AS >
+       mytick({ tG | SL }) 
+       [print tG " | " SL ": RecordTimeSent - "] .
+
+  --- Respond to a challenge
+  rl [Respond] :
+    ccnt(N)
+    h(fH)
+    <name: p |
+	       status: ready,
+	       ----ccnt: N,
+	       lists: (L ; LL),
+	       AS >
+    { tG | SL }
+    (p <- challenge(C))
+    => ccnt(s(N))
+       h(fH)
+       <name: p |
+	         status: ready,
+	         ----ccnt: s(N),
+	         lists: (LL ; L),
+	         AS >
+       mytick(insertList( { tG | SL } ,  
+	       ---- A one-round session or multi-round with no guess-ahead
+         if ROUNDS == 1 or GAHEAD == false then 
+	          [ tG + xDelay(fH), (v <- 
+                response(detResp(NOISE, C, PTYPE, L))), 0]  
+         ---- The first challenge in a multi-round sesssion (with guess-ahead)
+	       else if N == 0 then ----- iR == ROUNDS - 1 then   
+	          [ tG + xDelay(fH), (v <- 
+                response(detResp(NOISE, C, PTYPE, L))), 0] ; 
+            [ tG + 3.0 * xDelay(fH) - gATD(fH), (v <- 
+                response(gssResp(NOISE, PTYPE, headList(LL)))), 0]
+         ---- Any subsequent challenge other than the last (with guess-ahead)
+	       else if N < ROUNDS - 1 then ---- iR > 0 then    
+            [ tG + 3.0 * xDelay(fH) - gATD(fH), (v <- 
+                response(gssResp(NOISE, PTYPE, headList(LL)))), 0]
+         ---- The last challenge 
+	       else 
+		        nil 
+	       fi fi fi )) 
+	       [print tG " | " SL ": Respond - for " C] .
+	     	     
+
+  op detResp : Float Nat Nat BList -> MaybeBit .
+  eq detResp(fB, N, iG, L) 
+    = if not(sampleBerWithP(fB)) then 
+        detBit(N, iG, L)
+      else
+        bN
+      fi .
+
+  op gssResp : Float Nat BList -> MaybeBit .
+  eq gssResp(fB, iG, L) 
+    = if not(sampleBerWithP(fB)) then 
+        gssBit(iG, L)
+      else
+        bN
+      fi .
+
+	op detBit : Nat Nat BList -> MaybeBit .
+	eq detBit(N, iG, L) 
+    = if iG == 0 then    
+        ---- kProver
+        bitAt(N,L)
+      else    
+        ---- gProver
+        gssBit(iG, L) 
+      fi .
+
+	op gssBit : Nat BList -> MaybeBit .
+	eq gssBit(iG, L) 
+    = if iG == 1 then    
+        ---- gProver1
+        bitAt(sampleUniWithInt(DEPTH), L)
+      else if iG == 2 then   
+        ---- gProver2 
+        b( sampleUniWithInt(BBASE) )
+      else               
+        ---- gProver3
+        ---- It would be more interesting to do this with a prob < 1
+        bN 
+      fi fi .
+
+
+---(
+    --- Ignore any extra challenge at the end
+    rl [Respond] :
+        rounds(0)
+        <name: p | status: ready, AS >
+        { tG | SL }
+        (p <- challenge(N))
+      => rounds(0)
+         <name: p | status: ready, AS >
+         { tG | SL } .
+)
+    
+
+  ---- Receive a response (samples Z)
+  rl [Receive] :
+    <name: v |
+        status: receiving,
+        atime-recv: tS, 
+	      response: cP, AS >
+    { tG | SL }
+    (v <- response(cP'))
+    => <name: v |
+            status: received,
+            atime-recv: tG, 
+  	        response: cP', AS >
+       mytick(insert( { tG | SL } ,
+              [ floor(tG) + 1.0 + sampleZ , (v <- recordTime), 0])) 
+       [print tG " | " SL ": Receive - " cP'] .
+
+
+    --- Abort the protocol if a response is received too soon!
+  crl [Abort] :
+    rounds(iR)
+    <name: v |
+        status: ST,
+        response: cP, AS >
+    { tG | SL }
+    (v <- response(cP'))
+    => rounds(0)
+	     <name: v |
+            status: aborted,
+            response: cP', AS >
+       { tG | SL } 
+    if ST =/= receiving 
+    [print tG " | " SL ": Abort - on " cP' " and " ST] .
+          
+
+   
+  ---- Record the time, verify the response and record the result
+  crl [Verify] : 
+    <name: v |
+        status: received,
+        lists: (LL ; L),
+        atime-sent:  tS',
+        atime-recv:  tR',
+        mtime-sent:  tS,
+        mtime-recv:  tR,
+        challenge:   C,
+        response:    cP, 
+        mbit-cnt:    N, 
+        atbound-cnt: N', 
+        mtbound-cnt: N'', 
+        AS >
+    { tG | SL }
+    (v <- recordTime)
+    => <name: v |
+            status: ready,
+            lists: (LL ; L),
+            atime-sent:  tS',
+            atime-recv:  tR',
+            mtime-sent:  tS,
+            mtime-recv:  tG,
+            challenge:   C,
+            response:    cP, 
+            mbit-cnt:    (if mBit? then s(N) else N fi ), 
+            atbound-cnt: (if atBound? then s(N') else N' fi ), 
+            mtbound-cnt: (if mtBound? then s(N'') else N'' fi ), 
+            AS >
+       mytick(insert( { tG | SL } ,
+              [ floor(tG) + 1.0, (v <- beginRound), 0]))
+    if mBit?    := notNoise(cP) and (cP == bitAt(C, L))
+    /\ atBound? := notNoise(cP) and tR' - tS' <= MAXRTT 
+    /\ mtBound? := notNoise(cP) and tG - tS <= MAXRTT 
+    [print tG " | " SL ": Verify - with mbit? " mBit? ", atBound? " atBound? ", mtBound? " mtBound?] .
+
+endm
+
+
+mod DBP-ANALYSIS is
+    pr CONVERSION .
+    inc DBP-BEHAVIOR .
+
+    vars N N' iR : Nat .
+    var  C : Config .
+    var  AS : AttributeSet .
+    vars tRTT tS tR fH : Float .
+    var  cB : Bit . 
+    var St : Status .
+
+    *******************************************************************
+    ***** 0. Acceptance based on the *measured* RTT being within the bound
+
+    op acceptedMT : Config -> Float .
+    eq acceptedMT(
+          <name: v | 
+  	       status: St ,
+               mtbound-cnt: N,
+               AS > 
+	  C )
+      = if float(N) >= MIN-MTR and St == ready then 1.0 else 0.0 fi .
+
+    *********************************************************************
+    ***** 1. Rejection based on the *measured* RTT being more than the bound
+
+    op rejectedMT : Config -> Float .
+    eq rejectedMT(
+          <name: v | 
+  	       status: St ,
+               mtbound-cnt: N,
+               AS > 
+	  C )
+      = if float(N) < MIN-MTR or St == aborted then 1.0 else 0.0 fi .
+
+    
+    *******************************************************************
+    ***** 2. Acceptance based on the *actual* RTT being within the bound
+
+    op acceptedAT : Config -> Float .
+    eq acceptedAT(
+          <name: v |
+               status: St ,
+               atbound-cnt: N,
+               AS >
+          C )
+      = if float(N) >= MIN-ATR and St == ready then 1.0 else 0.0 fi .
+
+    *********************************************************************
+    ***** 3. Rejection based on the *actual* RTT being more than the bound
+
+    op rejectedAT : Config -> Float .
+    eq rejectedAT(
+          <name: v |
+               status: St ,
+               atbound-cnt: N,
+               AS >
+          C )
+      = if float(N) < MIN-ATR or St == aborted then 1.0 else 0.0 fi .
+
+
+    **************************************************************
+    ***** 4. Acceptance based on the number of matching bits received
+
+    op acceptedMB : Config -> Float .
+    eq acceptedMB(
+	  <name: v | status: St ,
+	             mbit-cnt: N,
+	             AS > C )
+      = if float(N) >= MIN-MBR and St == ready then 1.0 else 0.0 fi .
+
+    *****************************************************************
+    ***** 5. Rejection based on the number of non-matching bits received
+
+    op rejectedMB : Config -> Float .
+    eq rejectedMB(
+	  <name: v | status: St ,
+	             mbit-cnt: N,
+	             AS > C )
+      = if float(N) < MIN-MBR or St == aborted then 1.0 else 0.0 fi .
+
+
+    *****************************************************************
+    ***** Other functions
+
+    ---- 6. MT Success rate
+    op sRateMT : Config -> Float .
+    eq sRateMT(
+	  <name: v | status: ready ,
+	             mtbound-cnt: N,
+	             AS > C )
+      = float(N) / float(ROUNDS) .
+
+    ---- 7. AT Success rate
+    op sRateAT : Config -> Float .
+    eq sRateAT(
+	  <name: v | status: ready ,
+	             atbound-cnt: N,
+	             AS > C )
+      = float(N) / float(ROUNDS) .
+
+    ---- 8. MB Success rate
+    op sRateMB : Config -> Float .
+    eq sRateMB(
+	  <name: v | status: ready ,
+	             mbit-cnt: N,
+	             AS > C )
+      = float(N) / float(ROUNDS) .
+
+
+    *****************************************************************
+    ***** Compound functions
+
+    ---- 9. Accepted by both MT and MB
+    op acceptedMTMB : Config -> Float .
+    eq acceptedMTMB(C) 
+	= if acceptedMT(C) > 0.0 and acceptedMB(C) > 0.0 then 1.0 else 0.0 fi .
+
+    ---- 10. Rejected by either MT or MB
+    op rejectedMTMB : Config -> Float .
+    eq rejectedMTMB(C) 
+	= if rejectedMT(C) > 0.0 or rejectedMB(C) > 0.0 then 1.0 else 0.0 fi .
+
+    ---- 11. Accepted by both AT and MB
+    op acceptedATMB : Config -> Float .
+    eq acceptedATMB(C) 
+	= if acceptedAT(C) > 0.0 and acceptedMB(C) > 0.0 then 1.0 else 0.0 fi .
+
+    ---- 12. Rejected by either AT or MB
+    op rejectedATMB : Config -> Float .
+    eq rejectedATMB(C) 
+	= if rejectedAT(C) > 0.0 or rejectedMB(C) > 0.0 then 1.0 else 0.0 fi .
+
+    ---- 13. Attack detected
+    op attDetected : Config -> Float .
+    eq attDetected(<name: v | status: St , AS > C )
+      = if St == aborted then 1.0 else 0.0 fi .
+
+
+
+    ***** to be used by PVeStA
+    eq tick(rounds(0) h(fH) ccnt(N) C) =  rounds(ROUNDS) h(sampleRD) ccnt(0) C .
+
+    ----eq sat(0, C) = complete(C) .
+
+    ---- measured time
+    eq val(0, C) = acceptedMT(C) .
+    eq val(1, C) = rejectedMT(C) .
+    ---- actual time
+    eq val(2, C) = acceptedAT(C) .
+    eq val(3, C) = rejectedAT(C) .
+    ---- matching bits
+    eq val(4, C) = acceptedMB(C) .
+    eq val(5, C) = rejectedMB(C) .
+    ---- success rate
+    eq val(6, C) = sRateMT(C) .
+    eq val(7, C) = sRateAT(C) .
+    eq val(8, C) = sRateMB(C) .
+    ---- compound functions
+    eq val(9, C) = acceptedMTMB(C) .
+    eq val(10,C) = rejectedMTMB(C) .
+    eq val(11,C) = acceptedATMB(C) .
+    eq val(12,C) = rejectedATMB(C) .
+    ---- 
+    eq val(13,C) = attDetected(C) .
+
+endm
+
+mod MODEL-PARAMS is
+  pr SAMPLER . 
+  inc PARAMS .
+
+  var tX fH fX : Float .
+  var N : Nat .
+
+  --- Note: 
+  ---    0 <= rand  <= 1  (Float)
+  ---    0 <= rrand <= 1  (rational)
+  ---    0 <  prand <= 1  (Float)
+
+  --- Some useful quantities
+  --------------------------
+  ops rand2 rand4 : -> [Float] .
+  eq  rand2 = rand / 2.0 .
+  eq  rand4 = rand / 4.0 .
+
+  ops prand2 prand4 psrand2 psrand4 : -> [Float] .
+  eq  prand2  = prand / 2.0 .      --- 0.0  < prand2  <= 0.5
+  eq  prand4  = prand / 4.0 .      --- 0.0  < prand4  <= 0.25
+  eq  psrand2 = prand2 + 0.5 .    ---  0.5  < psrand2 <= 1.0
+  eq  psrand4 = prand4 + 0.25 .    --- 0.25 < psrand4 <= 0.5
+    
+  ops all smr lmr : -> [Float] .
+  eq smr = float(ROUNDS) / 2.0 .
+  eq lmr = float(ROUNDS) * 2.0 / 3.0 .
+  eq all = float(ROUNDS) .
+
+  op rttm : Float -> [Float] .
+  eq rttm(tX) = if MAXRTT > tX then MAXRTT - tX else 0.0 fi .
+
+  op rttt : Float -> [Float] .
+  eq rttt(tX) = MAXRTT * tX .
+
+  op range : Float Float -> Float .
+  eq range(fH, fX) = genRandom(- fH / fX, fH / fX) .
+
+  --- guess ahead strategies
+  ops cn cn0 ag : -> [Float] .
+  ops pr cn ag  : Float -> [Float] .
+
+  eq pr(fH) = 2.0 * fH .
+  eq cn     = genRandom(0.5, 2.0 * 0.5) .
+  eq cn0    = genRandom(0.25, 2.0 * 0.25) .
+  eq ag     = genRandom(1.5 * 0.5, 2.5 * 0.5) . 
+  eq cn(fH) = genRandom(fH, 2.0 * fH) .
+  eq ag(fH) = genRandom(1.5 * fH, 2.5 * fH) . 
+
+  --- random challenge strategies
+  ops @exp @prb @psb : Float -> [Float] .
+  op  @adp : Float Nat -> [Float] .
+
+  eq @exp(tX)    = genRandom(0.0, 2.0 * tX) .
+  eq @prb(tX)    = genRandom(0.0, tX) .
+  eq @psb(tX)    = genRandom(0.0, tX / 2.0) .
+  eq @adp(tX, N) = genRandom(0.0, tX / float(N)) .
+
+  ------------------------
+  --- Model parameters ---
+  ------------------------
+
+  --- Protocol
+  eq HASHTYPE = 0 .
+  eq BBASE = 2 .
+  eq ROUNDS = 35 .
+  eq DEPTH = 2 .
+  eq MAXRTT = 4.0 .
+  eq NOISE = 0.05 .
+
+  --- Verifier
+  eq VDCLK = true .
+  eq sampleX = rand2 .
+  eq sampleY = rand2 .
+  eq sampleZ = rand2 .
+  eq CDELAY(N) = @psb(1.0) .
+
+  --- Prover
+  eq PTYPE = 1 .
+  eq sampleRD = prand2 .
+  eq GAHEAD = true .
+  eq gATD(fH) = cn(fH) .
+
+  --- Acceptance threshold levels
+  eq MIN-MTR = lmr .
+  eq MIN-ATR = lmr .
+  eq MIN-MBR = lmr .
+
+
+  --- (computed -- shouldn't be modified directly)
+  --- Transmission delay: (R + H) / 2 
+  eq xDelay(fH) = (MAXRTT + fH) / 2.0 .
+  --- Additional delay for guess-ahead attacks *** deprecated
+  eq VDCDELAY = 0.0 . ---- if VDCLK then 1.0 else 0.0 fi .  
+
+endm
+
+mod DBP is
+  inc MODEL-PARAMS .
+  inc DBP-ANALYSIS .
+
+  --- Initial State  
+  eq initState =
+      rounds(0)
+      ccnt(0)
+      h(0.0)
+    	<name: v |
+          status:      pending,
+          round:       0,
+          lists:       nilBLL,
+          atime-sent:  0.0 ,
+          mtime-sent:  0.0 ,
+          atime-recv:  0.0 ,
+          mtime-recv:  0.0 ,
+          challenge:   0,
+          response:    bN, 
+          mbit-cnt:    0,
+          atbound-cnt: 0,
+          mtbound-cnt: 0
+      >
+      <name: p |
+          status: pending,
+          ----ccnt:   0,
+          lists:  nilBLL
+      >
+      { 0.0 | nil }
+      (v <- initialize) .    
+ 
+endm
+        
