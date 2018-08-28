@@ -1,3 +1,52 @@
+***(
+
+Clients
+	Actions:
+		- arrive (expressing interest) in 'init' state
+		- request (including fee) while 'init' or 'failed' going into 'waiting' state
+		- receive RN while 'waiting' disappearing and updating observer (count, retrial, average time, min, max, ...)
+		- receive NaN while 'waiting' going into 'failed' state 
+	Attributes:
+		- id, state, balance, retrials, service_time (total), service_time (successful round)
+
+Validators
+	Actions:
+		- join (with a pledge) in 'init' state
+		- approved by contract going into 'ready'
+		- propose a seed upon being solicited while in 'ready' state going into 'proposed'
+		- stay silent    upon being solicited while in 'ready' state going into 'refrained'
+		- receive RN (with profit share) while 'proposed' or 'refrained' going into 'ready'
+		- receive NaN while 'proposed' or 'refrained' while going into 'ready'
+		- 
+	Attributes:
+		- id, state, profit, seed, rnd_number, [some individual stats???]
+
+RDAO Contract
+	Actions:
+		- receive client request
+		- receive validator request to join
+		- receive validator request to leave
+		- solicit Validators
+		- receive proposals
+		- compute seed
+		- send out failed (return fees)
+		- send out RN (distribute profits)
+		- (perhaps also some self-scheduled messages to schedule internal events)
+	Attributes:
+		- so many!!
+
+Observer
+	Actions:
+		- NONE
+	Attributes:
+		- ??
+
+)
+
+
+
+
+
 
 mod ATTRIBUTES is
     pr PRED .
