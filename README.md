@@ -6,7 +6,7 @@ This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite th
 *This is part of work being done at Runtime Verificaiton Inc.*
 
 ## Model Basics
-The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator) or a virtual one (such as an attacker) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every action is timestamped. The model currently uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size '#PROP-SIZE' means that a game round will consume exactly `#PROP-SIZE` time slots. 
+The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator) or a virtual one (such as an attacker) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every action is timestamped. The model currently uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size `#PROP-SIZE` means that a game round will consume exactly `#PROP-SIZE` time slots. 
 
 Although the RANDAO process is mostly deterministic, there are a few important sources of randomness, which are captured by the model:
 
