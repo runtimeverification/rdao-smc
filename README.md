@@ -10,13 +10,13 @@ Although the RANDAO process is mostly deterministic, there are a few important s
 
 1. In each game round, (honest) proposers generate new random seeds for future rounds of the game in which they participate.
 2. Uncertainty in attacker behaviors is probabilistically captured, based on a suitable attack model.
-3. Environment uncertainties, such as transmission delays and network failures, is also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
+3. Environment uncertainties, such as transmission delays and network failures, are also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
 
 ## Running Simulations
 
 The model can be readily used to obtain sample runs of the protocol. The model is specified in **apmaude.maude** and **rdao.maude**, which can be found in the **/specs** subdirectory. The model parameters are declared as Maude operators, and are given values using Maude equations given in the module `PARAMS` in **rdao.maude**. 
 
-A recent version of Maude ([Maude 2.4](http://maude.cs.illinois.edu/ "Maude") or newer) will need to be downloaded and installed. Having the Maude executable available in your PATH (e.g. in bash: `export PATH=<path_to_the_maude_executable>:$PATH`) is recommended (will be required for statiscal verification with PVeStA).
+A fairly recent version of Maude ([Maude 2.4](http://maude.cs.illinois.edu/ "Maude") or newer) will need to be downloaded and installed. Having the Maude executable available in your PATH (e.g. in bash: `export PATH=<path_to_the_maude_executable>:$PATH`) is recommended (will be required later for statiscal verification with PVeStA).
 
 To run the simulations:
 
@@ -25,7 +25,7 @@ To run the simulations:
 3. load the model files: `load apmaude.maude .` and then `load rdao.maude .`.
 4. Use the rewrite command to obtain a sample run: `rew tick(initState) .`. The result is a configuration term that specifies the final state of the protocol session. You may repeat the command to obtain potentially different runs of the protocol.
 
-The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above.
+The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the 'print' attribute, which can show a complete log of actions taken in the sample run.
 
 ## Running Statistical Model Checking Tasks
 
