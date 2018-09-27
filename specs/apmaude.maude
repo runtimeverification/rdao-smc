@@ -1,4 +1,12 @@
 
+***(
+*** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
+*** 
+*** Musab A. Alturki
+*** Fall 2018
+*** Runtime Verifcation Inc. 
+)
+
 mod SAMPLER is
 	protecting RANDOM .
 	protecting COUNTER .
@@ -49,11 +57,20 @@ mod SAMPLER is
  	
 endm
 
-mod APMAUDE is
-  pr FLOAT .
-  pr NAT .
+mod ANAMELIST is 
+	protecting CONVERSION .
 
-  sorts ActorName Attribute AttributeSet Content .
+	sorts ActorName ActorNameList .
+	subsort ActorName < ActorNameList .
+
+	op nilAN : -> ActorNameList [ctor] .
+	op _;_ : ActorNameList ActorNameList -> ActorNameList [ctor assoc id: nilAN] .
+endm
+
+mod APMAUDE is
+	protecting ANAMELIST .
+
+  sorts Attribute AttributeSet Content .
   sorts Actor Msg Object Config .
   subsort Attribute < AttributeSet .
   subsort Actor < Object .

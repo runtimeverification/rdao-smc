@@ -1,750 +1,1158 @@
 ***(
-
-Clients
-	Actions:
-		- arrive (expressing interest) in 'init' state
-		- request (including fee) while 'init' or 'failed' going into 'waiting' state
-		- receive RN while 'waiting' disappearing and updating observer (count, retrial, average time, min, max, ...)
-		- receive NaN while 'waiting' going into 'failed' state 
-	Attributes:
-		- id, state, balance, retrials, service_time (total), service_time (successful round)
-
-Validators
-	Actions:
-		- join (with a pledge) in 'init' state
-		- approved by contract going into 'ready'
-		- propose a seed upon being solicited while in 'ready' state going into 'proposed'
-		- stay silent    upon being solicited while in 'ready' state going into 'refrained'
-		- receive RN (with profit share) while 'proposed' or 'refrained' going into 'ready'
-		- receive NaN while 'proposed' or 'refrained' while going into 'ready'
-		- 
-	Attributes:
-		- id, state, profit, seed, rnd_number, [some individual stats???]
-
-RDAO Contract
-	Actions:
-		- receive client request
-		- receive validator request to join
-		- receive validator request to leave
-		- solicit Validators
-		- receive proposals
-		- compute seed
-		- send out failed (return fees)
-		- send out RN (distribute profits)
-		- (perhaps also some self-scheduled messages to schedule internal events)
-	Attributes:
-		- so many!!
-
-Observer
-	Actions:
-		- NONE
-	Attributes:
-		- ??
-
+*** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
+*** 
+*** Musab A. Alturki
+*** Fall 2018
+*** Runtime Verifcation Inc. 
 )
 
+---- An abstraction of hashing
+mod HASH is
+	protecting NAT .
+
+	sort Seed Hash .
+	subsort Nat < Seed .
+
+	---- The hash operator
+	op h : Seed -> Hash [ctor frozen] .
+
+	vars S RS : Seed .
+
+	---- Commit operation
+	op commit : Seed -> Hash .
+	eq commit(S) = h(S) .
+
+	---- Reveal operation
+	op reveal : Hash -> Nat .
+	eq reveal(h(S)) = S .
+
+	---- Combining (XOR'ing) seeds to get a new one 
+	op newSeed : Seed Seed -> [Seed] .
+	eq newSeed(RS, S) = (RS xor S) rem 4294967295 .
+endm
+
+---- Nat lists 
+mod ILIST is
+	extending HASH .
+	protecting SAMPLER .
+
+	sort IList .
+	subsort Nat < IList .
+
+	op nilIL : -> IList [ctor] .
+	op _._ : IList IList -> IList [ctor assoc id: nilIL] .
+
+	vars I M N K : Nat .
+	vars S : Seed . 
+	vars IL IL1 IL2 IL1' IL2' : IList .
+
+	---- Compute a list of indices from the sequence of seeds S, S+1, ... , S+K
+    op computeNewIList : Nat Nat Seed -> [IList] .
+    eq computeNewIList(N, 0, S) = nilIL .
+    eq computeNewIList(N, s(K), S) = random(S + K) rem N . computeNewIList(N, K, S) .
+
+    ---- Compute the number of indices in the first list that appear in the second
+	op matchScore : IList IList -> [Nat] .
+	eq matchScore(IL1, IL2) = matchScore*(IL1, IL2, 0) .
+
+	op matchScore* : IList IList Nat -> [Nat] .
+	eq matchScore*((IL1 . I . IL1'), (IL2 . I . IL2'), N) = matchScore*((IL1 . IL1'), (IL2 . I . IL2'), s(N)) .
+	eq matchScore*(IL1, IL2, N) = N [owise] .
+
+    ---- Compute the size of the longest tail of indices in the first list that appear in the second
+	op lastWordScore : IList IList -> [Nat] .
+	eq lastWordScore(IL1, IL2) = lastWordScore*(IL1, IL2, 0) .
+
+	op lastWordScore* : IList IList Nat -> [Nat] .
+	eq lastWordScore*((IL1 . I), (IL2 . I . IL2'), N) = lastWordScore*(IL1, (IL2 . I . IL2'), s(N)) .
+	eq lastWordScore*(IL1, IL2, N) = N [owise] .
+
+endm
+
+---- Nat sets
+mod ISET is
+	protecting NAT .
+
+	sort ISet .
+	subsort Nat < ISet .
+
+	op mtIS : -> ISet [ctor] .
+	op _,_ : ISet ISet -> ISet [ctor assoc comm id: mtIS] .
+
+endm
+
+---- Validator roles 
+mod ROLES is 
+	protecting ILIST .
+
+	---- Compromized validator role positions
+	sort CPosition .
+	ops isolated ctailtail : -> CPosition [ctor] .
+	op  ctailhead : IList -> CPosition [ctor] .
+
+	---- Role types and constructors
+	sort Role Honest CRoleSet CRole .
+	subsort Honest CRoleSet < Role .
+	subsort CRole < CRoleSet .
+
+	op honest : -> Honest [ctor] .
+
+	op [_:_] : Nat CPosition -> CRole [ctor].
+	op mtCRS : -> CRoleSet [ctor] .
+	op _,_ : CRoleSet CRoleSet -> CRoleSet [ctor comm assoc id: mtCRS] .
+endm
+
+---- Validator records
+mod VRECORD is
+	protecting APMAUDE .
+	protecting ILIST .
+	protecting ROLES .
+
+	---- Public validator records
+	sorts VRecord VRecordList .
+	subsort VRecord < VRecordList .
+
+	op <_,_,_> : ActorName Hash Int -> VRecord [ctor] .
+	op nilVHL : -> VRecordList [ctor] .
+	op _;_ : VRecordList VRecordList -> VRecordList [ctor assoc id: nilVHL] .
+
+	---- Private compromized validator records
+	sorts CVRecord CVRecordList .
+	subsort CVRecord < CVRecordList .
+
+	op <_,_,_> : ActorName Seed Role -> CVRecord [ctor] .
+	op nilCVL : -> CVRecordList [ctor] .
+	op _;_ : CVRecordList CVRecordList -> CVRecordList [ctor assoc id: nilCVL] .
+
+	vars A : ActorName .
+	vars S : Seed .
+	vars H : Hash .
+	vars VHL : VRecordList .
+	vars I K : Nat .
+	vars X : Int .
+	vars R : Role .
+
+	---- not used so far
+	op getIDs : VRecordList -> ActorNameList .
+	eq getIDs(nilVHL) = nilAN .
+	eq getIDs(< A, H, X > ; VHL) = A ; getIDs(VHL) .
+
+endm
+
+---- Proposer records
+mod PROPOSERS is
+	protecting APMAUDE .
+
+	sorts Proposer ProposerList .
+	subsort Proposer < ProposerList .
+
+	op [_,_] : ActorName Bool -> Proposer [ctor] .
+	op nilPL : -> ProposerList [ctor] .
+	op _;_ : ProposerList ProposerList -> ProposerList [ctor assoc id: nilPL] .
+
+	vars A : ActorName .
+	vars B : Bool .
+	vars CL : ProposerList .
+
+	---- not used so far
+	op getIDs : ProposerList -> ActorNameList .
+	eq getIDs(nilPL) = nilAN .
+	eq getIDs([A, B] ; CL) = A ; getIDs(CL) .
+endm
+
+---- Attacker strategy
+mod STRATEGY is
+	protecting NAT .
+
+	---- true means reveal, false means refrain 
+	sort SkipList .
+	subsort Bool < SkipList .
+
+	op nilSKL : -> SkipList [ctor] .
+	op _._ : SkipList SkipList -> SkipList [ctor assoc id: nilSKL] .
+
+	sorts Strategy StrategyList .
+	subsort Strategy < StrategyList .
+
+	---- A strategy is a skiplist with a score 
+	op [_:_] : Nat SkipList -> Strategy [ctor] .
+
+	op nilSTL : -> StrategyList [ctor] .
+	op __ : StrategyList StrategyList -> StrategyList [ctor assoc id: nilSTL] .
 
 
+	vars N I : Nat . 
+	vars SKL : SkipList .
+	vars STL : StrategyList .
 
+	---- Generate all possible strategies of a given length
+	op enumStrategies : Nat -> [StrategyList] .
+	eq enumStrategies(0) = [0 : nilSKL] .
+	eq enumStrategies(s(N)) = augment(enumStrategies(N)) .
+		
+	op augment : StrategyList -> [StrategyList] .
+	eq augment(nilSTL) = nilSTL .
+	eq augment([I : SKL] STL) = [I : SKL . false] [I : SKL . true] augment(STL) .
 
+endm
 
+---- Actor attributes
 mod ATTRIBUTES is
-    pr PRED .
-    pr RANDBLIST . 
-    pr APMAUDE .
+    protecting VRECORD .
+    protecting PROPOSERS .
+    protecting ILIST .
+    protecting ISET .
+    protecting STRATEGY .
 
     --- states of an actor
     sort Status .
-    ops pending initialized ready       : -> Status . 
-    ops sending sent receiving received : -> Status . 
-    ops completed aborted               : -> Status .
+    ops init processing waiting failed ready proposed refrained : -> Status . 
 
     --- Attributes
-    op status:_      : Status    -> Attribute [format (m o d)] .  
-    op lists:_       : BLList    -> Attribute [format (m o d)] .  
-    op round:_       : Nat       -> Attribute [format (m o d)] .  
-    op challenge:_   : Nat       -> Attribute [format (m o d)] .
-    op response:_    : MaybeBit  -> Attribute [format (m o d)] .
-    op mbit-cnt:_    : Nat       -> Attribute [format (m o d)] .
-    op atbound-cnt:_ : Nat       -> Attribute [format (m o d)] .
-    op mtbound-cnt:_ : Nat       -> Attribute [format (m o d)] .
-    op mtime-sent:_  : Float     -> Attribute [format (m o d)] .  
-    op atime-sent:_  : Float     -> Attribute [format (m o d)] .  
-    op mtime-recv:_  : Float     -> Attribute [format (m o d)] .  
-    op atime-recv:_  : Float     -> Attribute [format (m o d)] .  
- ---   op ccnt:_        : Nat       -> Attribute [format (m o d)] .  
+    op status:_         : Status		-> Attribute [format (m o d)] .  
+    op balance:_        : Nat			-> Attribute [format (m o d)] .  
+    op seed:_           : Seed			-> Attribute [format (m o d)] .
+    op deposit:_        : Nat			-> Attribute [format (m o d)] .
+    op vappr:_          : VRecordList 	-> Attribute [format (m o d)] .
+    op vappr-size:_     : Nat			-> Attribute [format (m o d)] .
+    op vpending:_       : VRecordList	-> Attribute [format (m o d)] .
+    op vpending-size:_  : Nat			-> Attribute [format (m o d)] .
+    op proposers:_      : ProposerList	-> Attribute [format (m o d)] .
+    op prop-ilist:_     : IList			-> Attribute [format (m o d)] .
+    op prop-size:_      : Nat			-> Attribute [format (m o d)] .
+    op pnext:_          : Nat 			-> Attribute [format (m o d)] .
+    op success-rounds:_ : Nat			-> Attribute [format (m o d)] .
+    op contract:_       : ActorName 	-> Attribute [format (m o d)] .
+    op slots:_   	    : ISet 			-> Attribute [format (m o d)] .
+    op compromised:_    : Bool			-> Attribute [format (m o d)] .  
+    op current-seed:_   : Nat			-> Attribute [format (m o d)] .
+    op next-seed:_      : Seed 			-> Attribute [format (m o d)] .
+    op vcomp:_ 			: CVRecordList	-> Attribute [format (m o d)] .
+    op vcomp-size:_     : Nat			-> Attribute [format (m o d)] .
+    op strategy:_ 		: Strategy 		-> Attribute [format (m o d)] .
 endm
 
-mod CONFIG is
-  ex ATTRIBUTES .
-  
-    --- Additional configuration fields
-    op rounds : Nat   -> Config [format (nb! o)] .
-    op h      : Float -> Config [format (nb! o)] .
-    op ccnt   : Nat   -> Config [format (nb! o)] .  
+---- Actor names
+mod OBJECTS is 
+	extending APMAUDE .
+    op v  : Nat -> ActorName .   --- Validators
+    op bc :     -> ActorName .   --- Blockchain 
+    op r  :     -> ActorName .   --- RANDAO Contract
+    op a  :     -> ActorName .   --- Attacker
+    op vg :     -> ActorName .   --- Validator Generator - not used for now (fixed validator set assumed)
+    op o  :     -> ActorName .   --- Observer - not used so far           
+endm
 
-    --- Object names
-    op v : -> ActorName .   --- verifier
-    op p : -> ActorName .   --- prover
+---- Message contents
+mod MESSAGES is
+    protecting VRECORD .
+    protecting PROPOSERS .
+   	extending APMAUDE .
 
 	--- Message Contents
-    ops initialize forwardHash beginRound recordTime sendChallenge : -> Content . 
-    ops recordHash : BLList -> Content .
-    op  response   : MaybeBit -> Content .
-    op  challenge  : Nat -> Content .
+	op  reveal 		: ActorName Seed Hash 	-> Content . --- Revealing a seed and committing to the next one
+	op  slot 		: ActorName Nat 		-> Content . --- Assigning a slot to a proposer
+	op  nextSlot 	: Nat  					-> Content . --- A self message to schedule advancing the process to the next slot
+	op  nextRound 	:   					-> Content . --- A self message to schedule advancing the process to the next round 
+	op  doReveal	: Nat					-> Content . --- A self message to schedule a possible reveal action at the right slot 
+	op  doReveal*	:				 		-> Content . --- A self message to schedule the second step of the reveal action 
+
+	---- not used so far
+	op  init		:				 		-> Content . --- initialize 
+	op  spawn		:				-> Content . --- simulates client and validator arrivals
+	op  join       : ActorName Nat -> Content . --- join the validator set
+	op  leave      : ActorName Nat -> Content . --- leave the validator set	
+	op  approved   : ActorName     -> Content . --- Approve a join request
+	op  rejected   : ActorName     -> Content . --- Reject a join request
 endm
 
+---- Actor configuraiton
+mod CONFIG is
+	protecting ATTRIBUTES .
+	protecting OBJECTS .
+	protecting MESSAGES .
+	protecting ILIST .
+
+    --- Additional configuration fields
+    op limit : Bool Float   -> Config [format (nb! o)] .
+    op round : Float   -> Config [format (nb! o)] .
+endm
+
+---- Model parameters
 mod PARAMS is
-    pr FLOAT .
-    pr NAT .
-    
-    ---- Global parameters
-    ---- Protocol 
-    op HASHTYPE  : -> [Nat]   .  ---- How the shared bit sequences are generated
-    op BBASE     : -> [NzNat] .  ---- The bit base k 
-    op ROUNDS    : -> [Nat]   .  ---- The number of rounds n (length of a bit sequence)
-    op DEPTH     : -> [NzNat] .  ---- The number of bit sequences l 
-    op MAXRTT    : -> [Float] .  ---- The maximum RTT allowed (time upper bound)
-    op NOISE     : -> [Float] .  ---- The noise bias (probability of destroying a bit)
+    protecting SAMPLER .
 
-    ---- Verifier 
-    op  VDCLK                   : -> [Bool]  .  ---- Is the verifier's clock discrete?
-    ops sampleX sampleY sampleZ : -> [Float] .  ---- Verifier action delays X, Y and Z 
-    op  CDELAY                  : Nat -> [Float] .  ---- Intentional challenge send delay
+    ---- not all are currently used
+	op #RLIMIT     : -> [Float] .			---- Runtime limit of a single macro step in the simulation
+    op #DROP? : -> [Nat] .					---- Probability of a message in transit being dropped by the network
+    op #VINITSIZE : -> [Nat] .				---- Initial validator list size
+    op #VPINITSIZE : -> [Nat] .				---- Initial proposer list size 
+    op #VCOMPROMIZED : -> [Float] .  		---- Probability of an incoming validator being compromized
+    op #NT-DELAY : -> [Float] .				---- One-way message transmission delay 
+    op #MAXSEEDVALUE : -> [Nat] .			---- Maximum seed value
+    op #ATTACKTHRESHOLD : -> [Nat] .		---- Lower bound on what the attacker considers sufficient control (on proposers)
 
-    ---- Prover 
-    op PTYPE    : -> [Nat]   .  ---- Prover's behavior: honest or guessing 
-    op sampleRD : -> [Float] .  ---- H: the prover's time differential from the bound 
-    op GAHEAD   : -> [Bool]  .  ---- Is the prover guessing ahead?
-    op gATD     : Float -> [Float] .  ---- Guess-ahead time differential
-    ---op GATD     : -> [Float] .  ---- The guessing-ahead time differential 
+    op #INIT-CBALANCE : -> [Nat] .
+    op #INIT-VBALANCE : -> [Nat] .
+    op #CARRIVE-DELAY : -> [Float] .
+    op #VARRIVE-DELAY : -> [Float] .
+    op #CREQ-DELAY : -> [Float] .
+    op #REQ-FEE : -> [Nat] .
+    op #VDEPOSIT : -> [Nat] .
+    op #VDEPOSIT-MIN : -> [Nat] .
+    op #RETRIAL-LIMIT : -> [Nat] .
+	op #INIT-RND-DELAY : -> [Float] .
 
-    ---- Acceptance thresholds
-    op MIN-MBR   : -> [Float] .    ---- Acceptance threshold based on correctness of bits
-    op MIN-MTR   : -> [Float] .    ---- .. .. .. based on measured time
-    op MIN-ATR   : -> [Float] .    ---- .. .. .. based on actual time
+    eq #RLIMIT = 500.00 .
+    eq #VPINITSIZE = 10 .
+    eq #VINITSIZE = 10 * #VPINITSIZE .
+    eq #VCOMPROMIZED = 0.5 .
+    eq #DROP? = 0 .
+    eq #NT-DELAY = genRandom(0.01, 0.1) .
+    eq #MAXSEEDVALUE = 1000000 .
+    eq #ATTACKTHRESHOLD = #VPINITSIZE / 10 .
 
-    --- Computed quantities
-    op xDelay    : Float -> [Float] .  ---- (One-way) Trasmission delay
-    op VDCDELAY  : -> [Float] .  ---- Verfier's discrete clock delay
-
+    eq #INIT-CBALANCE = 1 .
+    eq #INIT-VBALANCE = 33 .
+    eq #CARRIVE-DELAY = sampleExpWithMean(1.5) .
+    eq #VARRIVE-DELAY = sampleExpWithMean(1.5) .
+    eq #CREQ-DELAY = 0.1 .
+    eq #REQ-FEE = #INIT-CBALANCE / 5 .
+    eq #VDEPOSIT = #INIT-VBALANCE - 1 .
+	eq #VDEPOSIT-MIN = #VDEPOSIT .
+	eq #RETRIAL-LIMIT = 5 . 
+	eq #INIT-RND-DELAY = 0.5 .   
 endm
 
-mod DBP-BEHAVIOR is
-  pr CONFIG .
-  pr PARAMS .
-  pr SAMPLER .
-  
-  vars xR xR' : NzNat . 
-  vars cR N iG N' N'' iR C : Nat . 
-  vars L : BList .
-  vars LL LL' LL0 LL1 : BLList .
-  vars B B0 B1 : Bit .
-  vars cP cP' : MaybeBit .
-  var  AS : AttributeSet . 
-  vars tG fB fH tD tX tS tS' tR tR' tRTT : Float .
-  vars SL SL' : ScheduleList . 
-  var ST : Status .
-  vars mBit? atBound? mtBound? dB : Bool . 
-   
-  ***** Phase I
-  --- Generate random lists and initialize the round counter
-  rl [Initialize] : 
-    rounds(xR)
-    <name: v |
-	       status: pending,
-	       round: cR,
-	       lists: LL,
-	       mbit-cnt: N, 
-	       atbound-cnt: N', 
-	       mtbound-cnt: N'', 
-	       AS >
-    { tG | SL }
-    (v <- initialize)
-    => rounds(xR)
-       <name: v |
-	         status: initialized,
-	         round: xR,
-	         lists: if HASHTYPE == 0 then 
-                    ---- Random lists (The standard protocol)
-                    genRandKaryListsByRounds(BBASE, DEPTH, ROUNDS)
-                  else 
-                    ---- Fully complementary lists
-                    genRandCKaryListsByRounds(BBASE, DEPTH, ROUNDS) 
-                  fi ,
-	         mbit-cnt: 0, 
-	         atbound-cnt: 0, 
-	         mtbound-cnt: 0, 
-	         AS >
-       { tG | SL }
-       (v <- forwardHash) 
-       [print "Initialize"] .
+---- RANDAO actions
+mod RANDAO-BEHAVIOR is
+	protecting CONFIG .
+	protecting PARAMS .
 
-  --- Forward generated lists to prover
-  rl [ForwardHash] : 
-    <name: v |
-	       status: initialized,
-	       lists: LL,
-	       AS >
-    { tG | SL }
-    (v <- forwardHash)
-    => <name: v |
-            status: ready,
-            lists: LL,
-            AS >
-         { tG | SL }
-         (p <- recordHash(LL)) 
-         [print "ForwardHash"] .
-
-  --- Record received lists at the prover
-  rl [RecordHash] : 
-    <name: p |
-        status: pending,
-        lists: LL,
-        AS >
-    { tG | SL }
-    (p <- recordHash(LL'))
-    => <name: p |
-            status: ready,
-            lists: LL',
-            AS >
-       { tG | SL }
-       (v <- beginRound) 
-       [print "RecordHash"] .
+	vars S S' RS : Seed .
+	vars AS AS' AS'' : AttributeSet . 
+	vars T TG TS TS' TR TR' D R F : Float .
+	vars SL SL' : ScheduleList . 
+	vars ST ST' : Strategy .
+	vars SSTL STL STL' : StrategyList .
+	vars CID VID RID OID AID BID : ActorName .
+  	vars H H' : Hash .
+	vars I J K L M N N' : Nat .
+	vars AL : ActorNameList .
+	vars VHL VHL' : VRecordList .
+	vars CVL CVL' : CVRecordList .
+	vars CL : ProposerList .
+	vars C : Content .
+	vars B B' T? : Bool .
+	vars IL : IList .
+	vars X : Int .
+	vars RO : Role .
+	vars SKL SKL' : SkipList .
+	vars CRS : CRoleSet . 
+	vars SDL : IList .
+	vars IS : ISet .
 
 
-  ***** Phase II
-  ---- Begin an authentication round 
-  ---- (samples X, and randomly selects the challenge [0 .. DEPTH - 1])
-  rl [BeginRound] :
-    rounds(xR)
-    <name: v |
-	       status: ready,
-	       round: iR,
-         atime-sent: tS  ,
-         mtime-sent: tS' ,
-         atime-recv: tR  ,
-         mtime-recv: tR' ,
-	       challenge: C,
-	       AS >  
-    { tG | SL }
-    (v <- beginRound)
-    => rounds(p(xR))
-	     <name: v |
-	         status: sending,
-	         round: p(xR),
-           atime-sent: sampleX, ----(floor(tG) + 1.0 + sampleX) ,
-           mtime-sent: 0.0 ,
-           atime-recv: 0.0 ,
-           mtime-recv: 0.0 ,
-           challenge: sampleUniWithInt(DEPTH) ,
-	         AS >
-	     mytick(insert( { tG | SL }, 
-	         [ floor(tG) + 1.0 + CDELAY(ROUNDS - p(xR)), (v <- sendChallenge) , 0] )) 
-	     [print tG " | " SL ": BeginRound - " xR] .
+	---- Advance the process to the next slot 
+ rl [RAdvanceSlot] :
+ 	limit(true, D)
+ 	<name: BID |		
+			seed:           S, 
+			vappr-size:     N,
+			AS >
+ 	<name: RID |		
+			status:	ready, 
+			proposers:	([ VID , B ] ; CL),
+			prop-ilist: IL,       
+			pnext:	K,
+			AS' >
+    { TG | SL }
+    (RID <- nextSlot(L))
+    => limit(TG <= #RLIMIT * D, D)
+    	<name: BID |		
+				seed:           S, 
+				vappr-size:     N,
+				AS >
+    	if L > #VPINITSIZE then
+    		---- End of game round: prepare to advance to the next round 
+ 			<name: RID |		
+					status:	processing, 
+					proposers:	([ VID , B ] ; CL),       
+					prop-ilist: computeNewIList(N, #VPINITSIZE, S),       
+					pnext:	1,
+					AS' >
+    		{ TG | SL }
+    		(RID <- nextRound)
+    	else 
+    		if L == K then 
+    			---- Slot was already advanced by a valid reveal -- so no changes 
+ 				<name: RID |		
+						status:	ready, 
+						proposers:	([ VID , B ] ; CL),       
+						prop-ilist: IL,       
+						pnext:	K,
+						AS' >
+			else
+				---- Slot was not advanced -- advance it and record failure of a reveal
+ 				<name: RID |		
+						status:	ready, 
+						proposers:	(CL ; [ VID , false ]),       
+						prop-ilist: IL,       
+						pnext:	s(K),
+						AS' >
+			fi 
+			mytick(insert({ TG | SL }, [floor(TG) + 1.0, (RID <- nextSlot(s(L))), 0])) 
+		fi
+    	[print TG ": RAdvanceSlot: from " K " to " L] .
 
-  --- sending out a challenge
-  rl [Challenge] :
-    h(fH)
-    rounds(iR)
-    <name: v |
-        status: sending,
-        lists: (L ; LL),
-        atime-sent: tS,
-        challenge: C, AS >
-    { tG | SL }
-    (v <- sendChallenge)
-    => h(fH)
-       rounds(iR)
-       <name: v |
-            status: sent,
-            lists: (LL ; L),
-            atime-sent: (tG + tS), 
-            challenge: C, AS >
-       mytick(insert(insert( { tG | SL } ,
-              [ floor(tG) + 1.0, (v <- recordTime), 0]),  
-              [ tG + tS + xDelay(fH), (p <- challenge(C)), 0])) 
-       [print tG " | " SL ": Challenge - " C] .
+    ---- Advance the process to the next round, update all records, form the new set of 
+    ---- proposers and assign slots
+  rl [RAdvanceRound] :
+ 	limit(true, D)
+ 	round(R)
+ 	<name: BID |		
+			vappr:          VHL, 
+			AS >
+	<name: a   |
+			vcomp: 			CVL,
+			AS' >
+ 	<name: RID |		
+			status:			processing, 
+			balance: 		J,
+			success-rounds: I, 
+			proposers:      CL,
+			prop-ilist:		IL, 
+			prop-size:     	M,
+			pnext:          K,
+			AS'' >
+    { TG | SL }
+    (RID <- nextRound)
+    =>  limit(TG <= #RLIMIT * D, D)
+    	round(R + 1.0)
+	 	<name: BID |		
+				vappr:          updateRewards(VHL, CL), 
+				AS >
+		<name: a   |
+				vcomp: 			setNewCVRoles(CVL, IL),
+				AS' >
+ 		<name: RID |		
+				status:			ready, 
+				balance: 		J,
+				success-rounds: s(I), 
+				proposers:      formProposers(VHL, IL),
+				prop-ilist:		IL, 
+				prop-size:     	M,
+				pnext:          1,
+				AS'' >
+		mytick(insertList(insert({ TG | SL }, [floor(TG) + 1.0, (RID <- nextSlot(2)), 0]), announceSlots(TG, RID, 0, IL))) 
+    	[print TG ": RAdvanceRound with new committee " IL] .
 
-  --- Record the (measured) time at which the challenge was sent (samples Y)
-  rl [RecordTimeSent] :
-    <name: v |
-        status: sent,
-        atime-sent: tS,
-        mtime-sent: tS', AS >
-    { tG | SL }
-    (v <- recordTime)
-    => <name: v |
-            status: receiving,
-            atime-sent: tS,
-            mtime-sent: (tG + sampleY),  AS >
-       mytick({ tG | SL }) 
-       [print tG " | " SL ": RecordTimeSent - "] .
 
-  --- Respond to a challenge
-  rl [Respond] :
-    ccnt(N)
-    h(fH)
-    <name: p |
-	       status: ready,
-	       ----ccnt: N,
-	       lists: (L ; LL),
-	       AS >
-    { tG | SL }
-    (p <- challenge(C))
-    => ccnt(s(N))
-       h(fH)
-       <name: p |
-	         status: ready,
-	         ----ccnt: s(N),
-	         lists: (LL ; L),
-	         AS >
-       mytick(insertList( { tG | SL } ,  
-	       ---- A one-round session or multi-round with no guess-ahead
-         if ROUNDS == 1 or GAHEAD == false then 
-	          [ tG + xDelay(fH), (v <- 
-                response(detResp(NOISE, C, PTYPE, L))), 0]  
-         ---- The first challenge in a multi-round sesssion (with guess-ahead)
-	       else if N == 0 then ----- iR == ROUNDS - 1 then   
-	          [ tG + xDelay(fH), (v <- 
-                response(detResp(NOISE, C, PTYPE, L))), 0] ; 
-            [ tG + 3.0 * xDelay(fH) - gATD(fH), (v <- 
-                response(gssResp(NOISE, PTYPE, headList(LL)))), 0]
-         ---- Any subsequent challenge other than the last (with guess-ahead)
-	       else if N < ROUNDS - 1 then ---- iR > 0 then    
-            [ tG + 3.0 * xDelay(fH) - gATD(fH), (v <- 
-                response(gssResp(NOISE, PTYPE, headList(LL)))), 0]
-         ---- The last challenge 
-	       else 
-		        nil 
-	       fi fi fi )) 
-	       [print tG " | " SL ": Respond - for " C] .
-	     	     
+    op updateRewards : VRecordList ProposerList -> [VRecordList] .
+    eq updateRewards(VHL, nilPL) = VHL . 
+    eq updateRewards((VHL ; < v(I) , H , X > ; VHL'), [ v(I) , B' ] ; CL) 
+    	= updateRewards((VHL ; < v(I) , H , (if B' then X + 2 else X fi) > ; VHL'), CL) .
 
-  op detResp : Float Nat Nat BList -> MaybeBit .
-  eq detResp(fB, N, iG, L) 
-    = if not(sampleBerWithP(fB)) then 
-        detBit(N, iG, L)
-      else
-        bN
-      fi .
 
-  op gssResp : Float Nat BList -> MaybeBit .
-  eq gssResp(fB, iG, L) 
-    = if not(sampleBerWithP(fB)) then 
-        gssBit(iG, L)
-      else
-        bN
-      fi .
+    op formProposers : VRecordList IList -> [ProposerList] .
+    eq formProposers(VHL, nilIL) = nilPL . 
+    eq formProposers((VHL ; < v(I) , H , X > ; VHL'), (I . IL)) = [ v(I) , false ] ; formProposers((VHL ; < v(I), H , X > ; VHL'), IL) .
 
-	op detBit : Nat Nat BList -> MaybeBit .
-	eq detBit(N, iG, L) 
-    = if iG == 0 then    
-        ---- kProver
-        bitAt(N,L)
-      else    
-        ---- gProver
-        gssBit(iG, L) 
-      fi .
+    op setNewCVRoles : CVRecordList IList -> [CVRecordList] .
+    eq setNewCVRoles(CVL, IL) = setNewCVRoles*(resetRoles(CVL), IL, #VPINITSIZE, true, nilIL) .
 
-	op gssBit : Nat BList -> MaybeBit .
-	eq gssBit(iG, L) 
-    = if iG == 1 then    
-        ---- gProver1
-        bitAt(sampleUniWithInt(DEPTH), L)
-      else if iG == 2 then   
-        ---- gProver2 
-        b( sampleUniWithInt(BBASE) )
-      else               
-        ---- gProver3
-        ---- It would be more interesting to do this with a prob < 1
-        bN 
-      fi fi .
+    op resetRoles : CVRecordList -> [CVRecordList] .
+    eq resetRoles(nilCVL) =  nilCVL . 
+    eq resetRoles(< v(I) , S, honest > ; CVL) = < v(I) , S, honest > ; resetRoles(CVL) .
+    eq resetRoles(< v(I) , S, CRS > ; CVL)    = < v(I) , S, mtCRS > ; resetRoles(CVL) .
+
+    op setNewCVRoles* : CVRecordList IList Nat Bool IList -> [CVRecordList] .
+    eq setNewCVRoles*(CVL, nilIL, N, B, SDL) 
+    	=  CVL . 
+    eq setNewCVRoles*((CVL ; < v(I) , S, honest > ; CVL'), (IL . I), s(N), T?, SDL) 
+    	= setNewCVRoles*((CVL ; < v(I) , S, honest > ; CVL'), IL, N, false, SDL) .
+    eq setNewCVRoles*((CVL ; < v(I) , S, CRS > ; CVL'), (IL . I), s(N), false, SDL) 
+    	= setNewCVRoles*((CVL ; < v(I) , S, (CRS , [s(N) : isolated]) > ; CVL'), IL, N, false, SDL) .
+   ceq setNewCVRoles*((CVL ; < v(I) , S, CRS > ; CVL'), (IL . I), s(N), true, SDL) 
+    	= if B then 
+    		setNewCVRoles*((CVL ; < v(I) , S, (CRS , [s(N) : ctailtail]) > ; CVL'), IL, N, true, (S . SDL)) 
+    	  else
+    		setNewCVRoles*((CVL ; < v(I) , S, (CRS , [s(N) : ctailhead(S . SDL)]) > ; CVL'), IL, N, true, (S . SDL)) 
+    	  fi
+    	if B := isCEnd?((CVL ; < v(I) , S, CRS > ; CVL'), IL) .
+
+    op isCEnd? : CVRecordList IList -> [Bool] .
+    eq isCEnd?(CVL, nilIL) = false .
+    eq isCEnd?((CVL ; < v(I) , S, honest > ; CVL'), (IL . I)) = false .
+    eq isCEnd?((CVL ; < v(I) , S, CRS > ; CVL'), (IL . I)) = true .
+
+    op announceSlots : Float ActorName Nat IList -> [ScheduleList] .
+    eq announceSlots(TG, RID, N, nilIL) = nil .
+    eq announceSlots(TG, RID, N, I . IL) = [TG + #NT-DELAY, (v(I) <- slot(RID, s(N))), #DROP?] ; announceSlots(TG, RID, s(N), IL) .
+
+
+    ---- Process a reveal message 
+ rl [RProcessReveal] :
+ 	limit(true, D)
+ 	<name: BID |		
+			seed:	RS,  
+			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+			AS >
+ 	<name: RID |		
+			status:	ready, 
+			proposers:	([ VID , B ] ; CL),       
+			pnext:	J,
+			AS' >
+    { TG | SL }
+    (RID <- reveal(VID, S, H'))
+    => limit(TG <= #RLIMIT * D, D)
+    	if (H == h(S)) then 
+    		---- The reveal is successful
+		 	<name: BID |		
+					seed:	newSeed(RS, S),  
+					vappr:	(VHL ; < VID, H' , X > ; VHL') ,   
+					AS >
+ 			<name: RID |		
+					status:	ready, 
+					proposers:	(CL ; [ VID , true ]),       
+					pnext:	s(J),
+					AS' >
+		else
+    		---- The reveal failed
+		 	<name: BID |		
+					seed:	RS,  
+					vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+					AS >
+ 			<name: RID |		
+					status:	ready, 
+					proposers:	(CL ; [ VID , false ]),       
+					pnext:	s(J),
+					AS' >
+		fi 
+    	mytick({ TG | SL }) 
+    	[print TG ": RProcessReveal received from " VID] .
+
+---(
+---- OLD
+ crl [RAddV] : 
+    limit(true, D)
+	<name: RID  |
+			vlist: PL,
+			v-cnt: N,
+			balance: M,
+			AS > 
+    { TG | SL }
+    (RID <- join(VID, J))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: RID  |
+				vlist: (PL ; < VID, J >),
+				v-cnt: s(N),
+				balance: (M + J),
+				AS > 
+    	mytick(insert({ TG | SL }, [TG + #NT-DELAY, (VID <- approved(RID)), #DROP?]))
+    if J >= #VDEPOSIT-MIN 
+    [print TG ": RAddValidator: " RID " validator " VID " joined"] .
+
+ crl [RRejV] : 
+    limit(true, D)
+	<name: RID  |
+			vlist: PL,
+			v-cnt: N,
+			balance: M,
+			AS > 
+    { TG | SL }
+    (RID <- join(VID, J))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: RID  |
+				vlist: PL,
+				v-cnt: N,
+				balance: M,
+				AS > 
+    	mytick(insert({ TG | SL }, [TG + #NT-DELAY, (VID <- rejected(RID)), #DROP?]))
+    if J < #VDEPOSIT-MIN 
+    [print TG ": RAddValidator: " RID " validator " VID " joined"] .
+
+  rl [RInitRND] : 
+    limit(true, D)
+	<name: RID  |
+			clist: CL,
+			c-cnt: N,
+			vlist: PL,
+			v-cnt: N',
+			balance: M,
+			r-stime: TS,
+			r-vl: PL',
+			AS > 
+    { TG | SL }
+    (RID <- initRN)
+    => limit(TG <= #RLIMIT * D, D)
+		<name: RID  |
+				clist: CL,
+				c-cnt: N,
+				vlist: PL,
+				v-cnt: N',
+				balance: M,
+				r-stime: TG,
+				r-vl: PL,
+				AS > 
+    	mytick(insertList({ TG | SL }, genSL(TG + #NT-DELAY, getIDs(PL), solicit(RID))))
+    [print TG ": RInitRND: " RID " initiated RND process with " PL] .
+
+	op genSL : Float ActorNameList Content -> ScheduleList .
+	eq genSL(T, nilAN, C) = nil .
+	eq genSL(T, A ; AL, C) = [T + genRandom(0.01,0.02), A <- C, #DROP?] .
+
+)
+
+endm
+ 
+mod VALIDATOR-BEHAVIOR is
+	protecting CONFIG .
+	protecting PARAMS .
+
+	vars S S' RS : Seed .
+	vars AS AS' AS'' : AttributeSet . 
+	vars T TG TS TS' TR TR' D R F : Float .
+	vars SL SL' : ScheduleList . 
+	vars CID VID RID OID AID BID : ActorName .
+  	vars H : Hash .
+	vars I J K L M N N' : Nat .
+	vars AL : ActorNameList .
+	vars VHL VHL' : VRecordList .
+	vars CVL CVL' : CVRecordList .
+	vars CL : ProposerList .
+	vars C : Content .
+	vars B : Bool .
+	vars IL : IList .
+	vars X : Int .
+	vars RO : Role .
+	vars CRS : CRoleSet . 
+	vars ST ST' : Strategy .
+	vars SSTL STL STL' : StrategyList .
+	vars CP : CPosition .
+	vars SKL SKL' : SkipList .
+	vars SDL : IList .
+	vars IS : ISet .
+
+
+	---- A validator records an assigned slot and schedules a reveal message during that slot
+  rl [VRecordSlot] : 
+    limit(true, D)
+    <name: VID |
+			status: ready,	
+	    	contract: RID,
+			slots: IS, 
+	    	AS >
+    { TG | SL }
+    (VID <- slot(RID, s(K)))
+    => limit(TG <= #RLIMIT * D, D)
+    	<name: VID |
+				status: ready,	
+	    		contract: RID,
+				slots: (s(K), IS), 
+	    		AS >
+		mytick(insert( { TG | SL }, [ TG + float(K), (VID <- doReveal(s(K))) , #DROP?]))
+	[print TG ": VRecordSlot: Slot s(" K ") assigned to " VID] .
+
+	---- An honest validator revealing the seed along with a new commit 
+  rl [VHonestReveal] : 
+    limit(true, D)
+    <name: VID |
+			status: ready,	
+	    	contract: RID,
+			current-seed: S,  
+			next-seed: S', 
+			compromised: false,
+			slots: (K, IS), 
+	    	AS >
+    { TG | SL }
+    (VID <- doReveal(K))
+    => limit(TG <= #RLIMIT * D, D)
+    	<name: VID |
+				status: ready,	
+	    		contract: RID,
+				current-seed: S',  
+				next-seed: sampleUniWithInt(#MAXSEEDVALUE), 
+				compromised: false,
+				slots: IS, 
+	    		AS >
+		mytick(insert( { TG | SL }, [ TG + #NT-DELAY, (RID <- reveal(VID, S, h(S'))) , #DROP?] ))
+	[print TG ": VReveal by " VID] .
+
+	op getCompIList : CVRecordList -> [IList] .
+	eq getCompIList(nilCVL) = nilIL .
+	eq getCompIList(< v(I) , S, honest > ; CVL) = getCompIList(CVL) .
+	eq getCompIList(< v(I) , S, CRS > ; CVL) = I . getCompIList(CVL) .
+
+	---- A compromized validator with role "isolated" possibly revealing a seed
+ crl [VCompReveal1] : 
+    limit(true, D)
+ 	<name: BID |		
+			seed:	RS,  
+			AS >
+	<name: AID |
+			vcomp:	(CVL ; < VID , S, ([ K : isolated], CRS) > ; CVL'),  
+			vcomp-size: N, 
+			AS' >    
+    <name: VID |
+			status: ready,	
+	    	contract: RID,
+			current-seed: S,  
+			next-seed: S', 
+			compromised: true,
+			slots: (K, IS), 
+	    	AS'' >
+	{ TG | SL }
+    (VID <- doReveal(K))
+    => limit(TG <= #RLIMIT * D, D)
+	 	<name: BID |		
+				seed:	RS,  
+				AS >
+		<name: AID |
+				vcomp:	(CVL ; < VID , if B then S' else S fi , ([ K : isolated], CRS) > ; CVL'),   
+				vcomp-size: N, 
+				AS' >    
+   	 	<name: VID |
+				status: ready,	
+	    		contract: RID,
+	    		current-seed: if B then S' else S fi ,  
+				next-seed: if B then sampleUniWithInt(#MAXSEEDVALUE) else S' fi, 
+				compromised: true,
+				slots: IS, 
+	    		AS'' >
+		if B then
+			mytick(insert( { TG | SL }, [ TG + #NT-DELAY, (RID <- reveal(VID, S, h(S'))) , #DROP?] ))
+		else
+			mytick({ TG | SL })
+		fi
+		if B := 
+			lastWordScore(
+				computeNewIList(N, #VPINITSIZE, newSeed(RS, S)), 
+				getCompIList(CVL ; < VID , S, ([ K : isolated], CRS) > ; CVL')
+			) >= #ATTACKTHRESHOLD
+		[print TG ": VCompReveal0 for slot " K " by " VID " => " B] .
+
+	---- A compromized validator with role "ctailtail" possibly revealing a seed
+ rl [VCompReveal2] : 
+    limit(true, D)
+ 	<name: BID |		
+			seed:	RS,  
+			AS >    
+	<name: AID |
+			vcomp:	(CVL ; < VID , S, ([ K : ctailtail], CRS) > ; CVL'),   
+			strategy: [J : B . SKL],
+			AS' >    
+    <name: VID |
+			status: ready,	
+	    	contract: RID,
+			current-seed: S,  
+			next-seed: S', 
+			compromised: true,
+			slots: (K, IS), 
+	    	AS'' >
+	{ TG | SL }
+    (VID <- doReveal(K))
+    => limit(TG <= #RLIMIT * D, D)
+	 	<name: BID |		
+				seed:	RS,  
+				AS >    
+		<name: AID |
+				vcomp:	(CVL ; < VID , if B then S' else S fi, ([ K : ctailtail], CRS) > ; CVL'),   
+				strategy: [J : SKL],
+				AS' >    
+   		<name: VID |
+				status: ready,	
+	    		contract: RID,
+	    		current-seed: if B then S' else S fi ,  
+				next-seed: if B then sampleUniWithInt(#MAXSEEDVALUE) else S' fi, 
+				compromised: true,
+				slots: IS, 
+	    		AS'' >
+	    if B then
+			mytick(insert( { TG | SL }, [ TG + #NT-DELAY, (RID <- reveal(VID, S, h(S'))) , #DROP?] ))
+		else
+			mytick({ TG | SL })
+		fi
+		[print TG ": VCompReveal2 for slot " K " by " VID " => " B] .	    	
+
+	---- A compromized validator with role "ctailhead" possibly revealing a seed
+ crl [VCompReveal3] : 
+    limit(true, D)
+ 	<name: BID |		
+			seed:	RS,  
+			AS >    
+	<name: AID |
+			vcomp:	(CVL ; < VID , S, ([ K : ctailhead(SDL)], CRS) > ; CVL'), 
+			vcomp-size: N,  
+			strategy: [J : SKL],
+			AS' >  
+    <name: VID |
+			status: ready,	
+	    	contract: RID,
+			current-seed: S,  
+			next-seed: S', 
+			compromised: true,
+			slots: (K, IS), 
+	    	AS'' >
+	{ TG | SL }
+    (VID <- doReveal(K))
+    => limit(TG <= #RLIMIT * D, D)
+	 	<name: BID |		
+				seed:	RS,  
+				AS >    
+		<name: AID |
+				vcomp:	(CVL ; < VID , if B then S' else S fi, ([ K : ctailhead(SDL)], CRS) > ; CVL'),   
+				vcomp-size: N,  
+				strategy: [I : SKL'],
+				AS' >  
+   		<name: VID |
+				status: ready,	
+	    		contract: RID,
+	    		current-seed: if B then S' else S fi ,  
+				next-seed: if B then sampleUniWithInt(#MAXSEEDVALUE) else S' fi, 
+				compromised: true,
+				slots: IS, 
+	    		AS'' >
+	    if B then
+			mytick(insert( { TG | SL }, [ TG + #NT-DELAY, (RID <- reveal(VID, S, h(S'))) , #DROP?] ))
+		else
+			mytick({ TG | SL })
+		fi
+	if STL        := enumStrategies(s(#VPINITSIZE - K))
+	/\ SSTL       := computeAllScores((CVL ; < VID , S, ([ K : ctailhead(SDL)], CRS) > ; CVL'), STL, RS, SDL, N, #VPINITSIZE)
+	/\ [I : B . SKL'] := findMaxScoreStrat(SSTL)
+	[print TG ": VCompReveal3 for slot " K " by " VID " with strategy " B " . " SKL'] .	    	
+
+	op computeAllScores : CVRecordList StrategyList Seed IList Nat Nat -> [StrategyList] .
+	eq computeAllScores(CVL, nilSTL, RS, SDL, N, M) = nilSTL .
+	eq computeAllScores(CVL, (ST STL), RS, SDL, N, M) 
+		= computeScore(CVL, ST, RS, SDL, N, M) computeAllScores(CVL, STL, RS, SDL, N, M) .
+
+	op computeScore : CVRecordList Strategy Seed IList Nat Nat -> [Strategy] .
+	--- eq computeScore([I : nilSKL], RS, (S . SDL), N, M) = [I : nilSKL] . 
+	ceq computeScore(CVL, [I : B . SKL], RS, (S . SDL), N, M) 
+		= [K : B . SKL]
+		if K := lastWordScore(computeNewIList(N, M, if B then newSeed(RS, S) else RS fi), getCompIList(CVL)) . 
+	
+	op findMaxScoreStrat : StrategyList -> [Strategy] .
+	eq findMaxScoreStrat(ST STL) = findMaxScoreStrat*(STL, ST) .
+
+	op findMaxScoreStrat* : StrategyList Strategy -> [Strategy] .
+	eq findMaxScoreStrat*(nilSTL, ST) = ST .
+	eq findMaxScoreStrat*([I : SKL] STL, [K : SKL']) 
+		= if I > K then 
+			findMaxScoreStrat*(STL, [I : SKL])
+		  else 
+			findMaxScoreStrat*(STL, [K : SKL'])
+		  fi .
+
+
+
+
+
 
 
 ---(
-    --- Ignore any extra challenge at the end
-    rl [Respond] :
-        rounds(0)
-        <name: p | status: ready, AS >
-        { tG | SL }
-        (p <- challenge(N))
-      => rounds(0)
-         <name: p | status: ready, AS >
-         { tG | SL } .
+---- OLD
+	---- a new validator arrives and requests to join
+  rl [VArrive] : 
+    limit(true, D)
+    <name: vg |
+	    	cnt: K, 
+	    	contract: RID,
+	    	AS >
+    { TG | SL }
+    (vg <- spawn)
+    => limit(TG <= #RLIMIT * D, D)
+    	<name: vg |
+	    		cnt: s(K), 
+		    	contract: RID,
+	    		AS >
+		<name: v(K)  |
+				status: waiting,
+				balance: (#INIT-VBALANCE - #VDEPOSIT),
+		    	contract: RID,
+		    	seed: random(counter),
+				rnd: 0,
+				AS >   
+		insert( { TG | SL }, [ TG + #VARRIVE-DELAY, (vg <- spawn) , #DROP?] )
+	    (r <- join(v(K), #VDEPOSIT, ))       
+	[print TG ": VArrive: " K] .
+
+	---- a validator is approved to the validator set 
+ rl [VApproved] : 
+    limit(true, D)
+	<name: VID  |
+			status: waiting,
+			contract: RID,
+			rnd: 0,
+			AS > 
+----	<name: OID  |
+----			success-cnt: I,
+----			retries-avg: R,
+----			stime-round: TR,
+----			stime-total: TR',
+----			AS' > 
+    { TG | SL }
+    (VID <- approved(RID))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: VID  |
+				status: ready,
+				contract: RID,
+				rnd: 0,
+				AS > 		
+----	<name: OID  |
+----			success-cnt: I,
+----			retries-avg: R,
+----			stime-round: TR,
+----			stime-total: TR',
+----			AS' > 
+    	mytick({ TG | SL }) 
+    [print "VApproved: " VID] .
+
+	---- a validator is solicited to provide a seed and immediately proposes one
+ rl [VPropose] : 
+    limit(true, D)
+	<name: VID  |
+			status: ready,
+			contract: RID,
+		    seed: S,
+			rnd: 0,
+			AS > 
+----	<name: OID  |
+----			success-cnt: I,
+----			retries-avg: R,
+----			stime-round: TR,
+----			stime-total: TR',
+----			AS' > 
+    { TG | SL }
+    (VID <- solicit(RID))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: VID  |
+				status: proposed,
+				contract: RID,
+		    	seed: S,
+				rnd: 0,
+				AS > 		
+----	<name: OID  |
+----			success-cnt: I,
+----			retries-avg: R,
+----			stime-round: TR,
+----			stime-total: TR',
+----			AS' > 
+		mytick(insert( { TG | SL }, [ TG + #NT-DELAY, (RID <- propose(VID, S)) , #DROP?] ))
+    [print "VPropose: " VID] .
+
+	---- a validator receives notification of rnd generation success
+ rl [VSuccess] : 
+    limit(true, D)
+		<name: VID  |
+				status: proposed,
+				contract: RID,
+				balance: K,
+		    	seed: S,
+				AS > 	
+    { TG | SL }
+    (VID <- succeeded(RID, J))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: VID  |
+				status: ready,
+				contract: RID,
+				balance: (K + J),
+		    	seed: random(counter),
+				AS > 	
+    	mytick({ TG | SL }) 
+    [print "VSuccess: " VID " with profit " J] .
+
+	---- a validator receives notification of rnd generation failure
+ rl [VFail] : 
+    limit(true, D)
+		<name: VID  |
+				status: proposed,
+				contract: RID,
+				balance: K,
+		    	seed: S,
+				AS > 	
+    { TG | SL }
+    (VID <- failed(RID))
+    => limit(TG <= #RLIMIT * D, D)
+		<name: VID  |
+				status: ready,
+				contract: RID,
+				balance: K,
+		    	seed: random(counter),
+				AS > 	
+    	mytick({ TG | SL }) 
+    [print "VFail: " VID] .
+
+
 )
-    
+endm
 
-  ---- Receive a response (samples Z)
-  rl [Receive] :
-    <name: v |
-        status: receiving,
-        atime-recv: tS, 
-	      response: cP, AS >
-    { tG | SL }
-    (v <- response(cP'))
-    => <name: v |
-            status: received,
-            atime-recv: tG, 
-  	        response: cP', AS >
-       mytick(insert( { tG | SL } ,
-              [ floor(tG) + 1.0 + sampleZ , (v <- recordTime), 0])) 
-       [print tG " | " SL ": Receive - " cP'] .
+mod INIT-STATE is
+	protecting VALIDATOR-BEHAVIOR .
+	protecting RANDAO-BEHAVIOR .
+
+	vars I J M N K : Nat .
+	vars S : Seed .
+	vars RID VID AID : ActorName .
+	vars AL : ActorNameList .
+	vars VHL VHL' : VRecordList .
+	vars CVL CVL' : CVRecordList .
+	vars AS AS' AS'' : AttributeSet .
+	vars VC : Config .
+	vars B : Bool .
+	var X : Int .
+	vars IL : IList .
+
+	---- Generate an initial list of validator objects
+	op spawnValidatorSet : Nat ActorName Nat -> [Config] .
+	eq spawnValidatorSet(0, RID, K) 
+		= null .
+	eq spawnValidatorSet(s(N), RID, K) 
+		= spawnValidator(N, RID, K) spawnValidatorSet(N, RID, K) .
+
+	op spawnValidator : Nat ActorName Nat -> [Object] .
+	eq spawnValidator(N, RID, K) 
+		= <name: v(N)  |										---- A validator with unique id v(N)
+				status: ready,									---- status of a validator
+				contract: RID,									---- the RANDAO contract with which the validator interacts 
+				balance: K,										---- current validator balance
+				slots: mtIS,					 				---- the time slot assigned (mtIS means not a committee member)
+				compromised: sampleBerWithP(#VCOMPROMIZED),  	---- true iff controled by the attacker
+				current-seed: sampleUniWithInt(#MAXSEEDVALUE),	---- random seed for current round 
+				next-seed: sampleUniWithInt(#MAXSEEDVALUE)    	---- random seed for next round 
+			> .	
+
+	---- Generate a list of (empty) public validator records
+	op makeVL : Nat -> [VRecordList] .
+	eq makeVL(0) = nilVHL .
+	eq makeVL(s(N)) = makeVL(N) ; < v(N), h(0) , (- #VDEPOSIT) > .
+
+	---- Generate a list of (empty) private validator records (to be used by the attacker)
+	op makeCVL : Nat -> [CVRecordList] .
+	eq makeCVL(0) = nilCVL .
+	eq makeCVL(s(N)) =  makeCVL(N) ; < v(N), 0, honest > .
+
+	---- Generate a list of scheduled messages assigning initial slots to proposers
+	op createInitSL : IList Nat -> [ScheduleList] .
+	eq createInitSL(nilIL, N) = nil .
+	eq createInitSL(IL . I, s(N)) = createInitSL(IL, N) ; [0.1, (v(I) <- slot(r, s(N))) , #DROP?] .
 
 
-    --- Abort the protocol if a response is received too soon!
-  crl [Abort] :
-    rounds(iR)
-    <name: v |
-        status: ST,
-        response: cP, AS >
-    { tG | SL }
-    (v <- response(cP'))
-    => rounds(0)
-	     <name: v |
-            status: aborted,
-            response: cP', AS >
-       { tG | SL } 
-    if ST =/= receiving 
-    [print tG " | " SL ": Abort - on " cP' " and " ST] .
-          
+	---- Initialize the Blockchain object 
+	op initBlockchain : Nat -> [Object] .
+	eq initBlockchain(N) = 
+		<name: bc |												---- The Blockchain Object
+			status:         ready,              				---- status can be 'ready', 'processing' or 'done'
+			seed:           sampleUniWithInt(#MAXSEEDVALUE),    ---- seed of previous game round
+			vpending:       nilVHL,             				---- list of pending validators 
+			vpending-size:  0,                  				---- their count
+			vappr:          makeVL(N),     						---- list of approved validators (as public validator records) 
+			vappr-size:     N           						---- their count
+		> .
 
-   
-  ---- Record the time, verify the response and record the result
-  crl [Verify] : 
-    <name: v |
-        status: received,
-        lists: (LL ; L),
-        atime-sent:  tS',
-        atime-recv:  tR',
-        mtime-sent:  tS,
-        mtime-recv:  tR,
-        challenge:   C,
-        response:    cP, 
-        mbit-cnt:    N, 
-        atbound-cnt: N', 
-        mtbound-cnt: N'', 
-        AS >
-    { tG | SL }
-    (v <- recordTime)
-    => <name: v |
-            status: ready,
-            lists: (LL ; L),
-            atime-sent:  tS',
-            atime-recv:  tR',
-            mtime-sent:  tS,
-            mtime-recv:  tG,
-            challenge:   C,
-            response:    cP, 
-            mbit-cnt:    (if mBit? then s(N) else N fi ), 
-            atbound-cnt: (if atBound? then s(N') else N' fi ), 
-            mtbound-cnt: (if mtBound? then s(N'') else N'' fi ), 
-            AS >
-       mytick(insert( { tG | SL } ,
-              [ floor(tG) + 1.0, (v <- beginRound), 0]))
-    if mBit?    := notNoise(cP) and (cP == bitAt(C, L))
-    /\ atBound? := notNoise(cP) and tR' - tS' <= MAXRTT 
-    /\ mtBound? := notNoise(cP) and tG - tS <= MAXRTT 
-    [print tG " | " SL ": Verify - with mbit? " mBit? ", atBound? " atBound? ", mtBound? " mtBound?] .
+	op initAttacker : Nat -> [Object] .
+	eq initAttacker(N) = 
+		<name: a |								---- The Attacker Object
+			status:			ready,              ---- status can be 'ready', 'processing' or 'done'
+			vcomp:			makeCVL(N),       	---- Private validator records
+			vcomp-size:		N,           		---- their count
+			strategy:		[0 : nilSKL]		---- the attacker's strategy (for tails controlled by the attacker)
+		> .	
+
+	op initRandao : Nat Nat Nat -> [Object] .
+	eq initRandao(M, N, K) =
+		<name: r |								---- The RANDAO Contract
+			status:         ready,              ---- status can be 'ready', 'processing' or 'done'
+			balance:        (N * K),       		---- current contract balance 
+			success-rounds: 0,                  ---- number of successful rounds
+			proposers:      nilPL, 				---- proposers participating in the current game round
+			prop-size:      M,                  ---- their count (in the steady state, this must be equal to #PROP-SIZE)
+			prop-ilist: 	nilIL, 				---- their indices,       
+			pnext:          1                   ---- next validator (time slot) to process
+		> .
+
+
+ 	--- Initial State  
+	rl initState =>
+		initSystem(
+			initProposers(
+				initBlockchain(#VINITSIZE)
+				initAttacker(#VINITSIZE)
+				initRandao(#VPINITSIZE, #VINITSIZE, #VDEPOSIT)
+				spawnValidatorSet(#VINITSIZE, r, #INIT-VBALANCE - #VDEPOSIT), #VINITSIZE, #VPINITSIZE
+		), #VINITSIZE
+	) .
+
+	---- A helper function to initialize the proposers list 
+	op initProposers : Config Nat Nat -> [Config] .
+	eq initProposers(
+		<name: bc | seed: S, AS >
+		<name: r  |	prop-ilist: nilIL, AS' >        
+		VC, N, M) 
+		= initProposers(
+			<name: bc | seed: S, AS >  
+			<name: r  | prop-ilist: computeNewIList(N, M, S), AS' >        
+			VC, N, M) .
+
+	eq initProposers(
+		<name: bc | vappr: VHL, AS >  
+		<name: r  |	prop-ilist: (I . IL), proposers: nilPL, AS' >        
+		VC, N, M) 
+		= <name: bc | vappr: VHL, AS >  
+		  <name: r  | prop-ilist: (I . IL), proposers: formProposers(VHL, (I . IL)), AS' >        
+		  VC .
+
+	---- A helper function to initialize all validator records and the configuration as a whole 
+	op initSystem : Config Nat -> [Config] .
+	eq initSystem(
+			<name: bc    | vappr: (VHL ; < v(I), h(0), X >   ; VHL'), AS > 	
+			<name: a     | vcomp: (CVL ; < v(I), 0, honest > ; CVL'), AS' > 								
+			<name: v(I)  | current-seed: S, compromised: B, AS'' >
+			VC, s(I))
+		= initSystem(
+				<name: bc    | vappr: (VHL ; < v(I), h(S), X > ; VHL'), AS > 	
+				<name: a     | vcomp: (CVL ; < v(I), if B then S else 0 fi, if B then mtCRS else honest fi > ; CVL'), AS' > 								
+				<name: v(I)  | current-seed: S, compromised: B, AS'' >
+				VC, I) .
+	eq initSystem(
+			<name: r | prop-ilist: IL, prop-size: M, AS > 
+			<name: a | vcomp: CVL, AS' > 
+			VC, 0) 
+		= limit(false, 0.0)
+		  round(1.0)
+		  <name: r | prop-ilist: IL, prop-size: M, AS > 
+		  <name: a | vcomp: setNewCVRoles(CVL, IL), AS' > 
+		  VC 
+		  mytick(insert({ 0.0 | createInitSL(IL, M) }, [1.0, r <- nextSlot(2), #DROP?])) .
 
 endm
 
 
-mod DBP-ANALYSIS is
-    pr CONVERSION .
-    inc DBP-BEHAVIOR .
+mod ANALYSIS-INTERFACE is
+	protecting INIT-STATE .
 
-    vars N N' iR : Nat .
     var  C : Config .
-    var  AS : AttributeSet .
-    vars tRTT tS tR fH : Float .
-    var  cB : Bit . 
-    var St : Status .
+    var  B : Bool .
+    var  D : Float .
 
-    *******************************************************************
-    ***** 0. Acceptance based on the *measured* RTT being within the bound
+	***** to be used by PVeStA
 
-    op acceptedMT : Config -> Float .
-    eq acceptedMT(
-          <name: v | 
-  	       status: St ,
-               mtbound-cnt: N,
-               AS > 
-	  C )
-      = if float(N) >= MIN-MTR and St == ready then 1.0 else 0.0 fi .
-
-    *********************************************************************
-    ***** 1. Rejection based on the *measured* RTT being more than the bound
-
-    op rejectedMT : Config -> Float .
-    eq rejectedMT(
-          <name: v | 
-  	       status: St ,
-               mtbound-cnt: N,
-               AS > 
-	  C )
-      = if float(N) < MIN-MTR or St == aborted then 1.0 else 0.0 fi .
-
-    
-    *******************************************************************
-    ***** 2. Acceptance based on the *actual* RTT being within the bound
-
-    op acceptedAT : Config -> Float .
-    eq acceptedAT(
-          <name: v |
-               status: St ,
-               atbound-cnt: N,
-               AS >
-          C )
-      = if float(N) >= MIN-ATR and St == ready then 1.0 else 0.0 fi .
-
-    *********************************************************************
-    ***** 3. Rejection based on the *actual* RTT being more than the bound
-
-    op rejectedAT : Config -> Float .
-    eq rejectedAT(
-          <name: v |
-               status: St ,
-               atbound-cnt: N,
-               AS >
-          C )
-      = if float(N) < MIN-ATR or St == aborted then 1.0 else 0.0 fi .
-
-
-    **************************************************************
-    ***** 4. Acceptance based on the number of matching bits received
-
-    op acceptedMB : Config -> Float .
-    eq acceptedMB(
-	  <name: v | status: St ,
-	             mbit-cnt: N,
-	             AS > C )
-      = if float(N) >= MIN-MBR and St == ready then 1.0 else 0.0 fi .
-
-    *****************************************************************
-    ***** 5. Rejection based on the number of non-matching bits received
-
-    op rejectedMB : Config -> Float .
-    eq rejectedMB(
-	  <name: v | status: St ,
-	             mbit-cnt: N,
-	             AS > C )
-      = if float(N) < MIN-MBR or St == aborted then 1.0 else 0.0 fi .
-
-
-    *****************************************************************
-    ***** Other functions
-
-    ---- 6. MT Success rate
-    op sRateMT : Config -> Float .
-    eq sRateMT(
-	  <name: v | status: ready ,
-	             mtbound-cnt: N,
-	             AS > C )
-      = float(N) / float(ROUNDS) .
-
-    ---- 7. AT Success rate
-    op sRateAT : Config -> Float .
-    eq sRateAT(
-	  <name: v | status: ready ,
-	             atbound-cnt: N,
-	             AS > C )
-      = float(N) / float(ROUNDS) .
-
-    ---- 8. MB Success rate
-    op sRateMB : Config -> Float .
-    eq sRateMB(
-	  <name: v | status: ready ,
-	             mbit-cnt: N,
-	             AS > C )
-      = float(N) / float(ROUNDS) .
-
-
-    *****************************************************************
-    ***** Compound functions
-
-    ---- 9. Accepted by both MT and MB
-    op acceptedMTMB : Config -> Float .
-    eq acceptedMTMB(C) 
-	= if acceptedMT(C) > 0.0 and acceptedMB(C) > 0.0 then 1.0 else 0.0 fi .
-
-    ---- 10. Rejected by either MT or MB
-    op rejectedMTMB : Config -> Float .
-    eq rejectedMTMB(C) 
-	= if rejectedMT(C) > 0.0 or rejectedMB(C) > 0.0 then 1.0 else 0.0 fi .
-
-    ---- 11. Accepted by both AT and MB
-    op acceptedATMB : Config -> Float .
-    eq acceptedATMB(C) 
-	= if acceptedAT(C) > 0.0 and acceptedMB(C) > 0.0 then 1.0 else 0.0 fi .
-
-    ---- 12. Rejected by either AT or MB
-    op rejectedATMB : Config -> Float .
-    eq rejectedATMB(C) 
-	= if rejectedAT(C) > 0.0 or rejectedMB(C) > 0.0 then 1.0 else 0.0 fi .
-
-    ---- 13. Attack detected
-    op attDetected : Config -> Float .
-    eq attDetected(<name: v | status: St , AS > C )
-      = if St == aborted then 1.0 else 0.0 fi .
-
-
-
-    ***** to be used by PVeStA
-    eq tick(rounds(0) h(fH) ccnt(N) C) =  rounds(ROUNDS) h(sampleRD) ccnt(0) C .
-
-    ----eq sat(0, C) = complete(C) .
-
-    ---- measured time
-    eq val(0, C) = acceptedMT(C) .
-    eq val(1, C) = rejectedMT(C) .
-    ---- actual time
-    eq val(2, C) = acceptedAT(C) .
-    eq val(3, C) = rejectedAT(C) .
-    ---- matching bits
-    eq val(4, C) = acceptedMB(C) .
-    eq val(5, C) = rejectedMB(C) .
-    ---- success rate
-    eq val(6, C) = sRateMT(C) .
-    eq val(7, C) = sRateAT(C) .
-    eq val(8, C) = sRateMB(C) .
-    ---- compound functions
-    eq val(9, C) = acceptedMTMB(C) .
-    eq val(10,C) = rejectedMTMB(C) .
-    eq val(11,C) = acceptedATMB(C) .
-    eq val(12,C) = rejectedATMB(C) .
-    ---- 
-    eq val(13,C) = attDetected(C) .
+	---- D is the game round number 
+	---- B is a flag indicating whether the *macro tick* (or game round in this case) is ongoing
+	---- tick is PVeStA's step 
+    eq tick(limit(B, D) C) =  limit(true, D + 1.0) C .
 
 endm
 
-mod MODEL-PARAMS is
-  pr SAMPLER . 
-  inc PARAMS .
-
-  var tX fH fX : Float .
-  var N : Nat .
-
-  --- Note: 
-  ---    0 <= rand  <= 1  (Float)
-  ---    0 <= rrand <= 1  (rational)
-  ---    0 <  prand <= 1  (Float)
-
-  --- Some useful quantities
-  --------------------------
-  ops rand2 rand4 : -> [Float] .
-  eq  rand2 = rand / 2.0 .
-  eq  rand4 = rand / 4.0 .
-
-  ops prand2 prand4 psrand2 psrand4 : -> [Float] .
-  eq  prand2  = prand / 2.0 .      --- 0.0  < prand2  <= 0.5
-  eq  prand4  = prand / 4.0 .      --- 0.0  < prand4  <= 0.25
-  eq  psrand2 = prand2 + 0.5 .    ---  0.5  < psrand2 <= 1.0
-  eq  psrand4 = prand4 + 0.25 .    --- 0.25 < psrand4 <= 0.5
-    
-  ops all smr lmr : -> [Float] .
-  eq smr = float(ROUNDS) / 2.0 .
-  eq lmr = float(ROUNDS) * 2.0 / 3.0 .
-  eq all = float(ROUNDS) .
-
-  op rttm : Float -> [Float] .
-  eq rttm(tX) = if MAXRTT > tX then MAXRTT - tX else 0.0 fi .
-
-  op rttt : Float -> [Float] .
-  eq rttt(tX) = MAXRTT * tX .
-
-  op range : Float Float -> Float .
-  eq range(fH, fX) = genRandom(- fH / fX, fH / fX) .
-
-  --- guess ahead strategies
-  ops cn cn0 ag : -> [Float] .
-  ops pr cn ag  : Float -> [Float] .
-
-  eq pr(fH) = 2.0 * fH .
-  eq cn     = genRandom(0.5, 2.0 * 0.5) .
-  eq cn0    = genRandom(0.25, 2.0 * 0.25) .
-  eq ag     = genRandom(1.5 * 0.5, 2.5 * 0.5) . 
-  eq cn(fH) = genRandom(fH, 2.0 * fH) .
-  eq ag(fH) = genRandom(1.5 * fH, 2.5 * fH) . 
-
-  --- random challenge strategies
-  ops @exp @prb @psb : Float -> [Float] .
-  op  @adp : Float Nat -> [Float] .
-
-  eq @exp(tX)    = genRandom(0.0, 2.0 * tX) .
-  eq @prb(tX)    = genRandom(0.0, tX) .
-  eq @psb(tX)    = genRandom(0.0, tX / 2.0) .
-  eq @adp(tX, N) = genRandom(0.0, tX / float(N)) .
-
-  ------------------------
-  --- Model parameters ---
-  ------------------------
-
-  --- Protocol
-  eq HASHTYPE = 0 .
-  eq BBASE = 2 .
-  eq ROUNDS = 35 .
-  eq DEPTH = 2 .
-  eq MAXRTT = 4.0 .
-  eq NOISE = 0.05 .
-
-  --- Verifier
-  eq VDCLK = true .
-  eq sampleX = rand2 .
-  eq sampleY = rand2 .
-  eq sampleZ = rand2 .
-  eq CDELAY(N) = @psb(1.0) .
-
-  --- Prover
-  eq PTYPE = 1 .
-  eq sampleRD = prand2 .
-  eq GAHEAD = true .
-  eq gATD(fH) = cn(fH) .
-
-  --- Acceptance threshold levels
-  eq MIN-MTR = lmr .
-  eq MIN-ATR = lmr .
-  eq MIN-MBR = lmr .
 
 
-  --- (computed -- shouldn't be modified directly)
-  --- Transmission delay: (R + H) / 2 
-  eq xDelay(fH) = (MAXRTT + fH) / 2.0 .
-  --- Additional delay for guess-ahead attacks *** deprecated
-  eq VDCDELAY = 0.0 . ---- if VDCLK then 1.0 else 0.0 fi .  
 
-endm
 
-mod DBP is
-  inc MODEL-PARAMS .
-  inc DBP-ANALYSIS .
 
-  --- Initial State  
-  eq initState =
-      rounds(0)
-      ccnt(0)
-      h(0.0)
-    	<name: v |
-          status:      pending,
-          round:       0,
-          lists:       nilBLL,
-          atime-sent:  0.0 ,
-          mtime-sent:  0.0 ,
-          atime-recv:  0.0 ,
-          mtime-recv:  0.0 ,
-          challenge:   0,
-          response:    bN, 
-          mbit-cnt:    0,
-          atbound-cnt: 0,
-          mtbound-cnt: 0
-      >
-      <name: p |
-          status: pending,
-          ----ccnt:   0,
-          lists:  nilBLL
-      >
-      { 0.0 | nil }
-      (v <- initialize) .    
- 
-endm
+
+
+
+
         
