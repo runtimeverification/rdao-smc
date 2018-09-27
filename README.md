@@ -33,7 +33,7 @@ The directory **/specs** includes a Maude script named **rdao-tests.maude** that
 
 ## Getting Help
 
-For inquiries or to report problems, please contact musab.alturki [at] gmail [dot] com.
+For inquiries or to report problems, please drop me an email.
 
 
 
