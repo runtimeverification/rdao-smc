@@ -4,7 +4,7 @@ This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite th
 *This is part of work being done at Runtime Verificaiton Inc.*
 
 ## Model Basics
-The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator) or a virtual one (such as an attacker) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every action is timestamped. The model currently uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size '#PROP-SIZE' means that a game round will consume exactly '#PROP-SIZE' time slots. 
+The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator) or a virtual one (such as an attacker) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every action is timestamped. The model currently uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size '#PROP-SIZE' means that a game round will consume exactly `#PROP-SIZE` time slots. 
 
 Although the RANDAO process is mostly deterministic, there are a few important sources of randomness, which are captured by the model:
 
@@ -25,7 +25,7 @@ To run the simulations:
 3. load the model files: `load apmaude.maude .` and then `load rdao.maude .`.
 4. Use the rewrite command to obtain a sample run: `rew tick(initState) .`. The result is a configuration term that specifies the final state of the protocol session. You may repeat the command to obtain potentially different runs of the protocol.
 
-The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the 'print' attribute, which can show a complete log of actions taken in the sample run.
+The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the `print` attribute, which can show a complete log of actions taken in the sample run.
 
 ## Running Statistical Model Checking Tasks
 
