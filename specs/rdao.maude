@@ -278,52 +278,6 @@ mod CONFIG is
     op round : Float   -> Config [format (nb! o)] .
 endm
 
----- Model parameters
-mod PARAMS is
-    protecting SAMPLER .
-
-    ---- not all are currently used
-	op #RLIMIT     : -> [Float] .			---- Runtime limit of a single macro step in the simulation
-    op #DROP? : -> [Nat] .					---- Probability of a message in transit being dropped by the network
-    op #VINITSIZE : -> [Nat] .				---- Initial validator list size
-    op #VPINITSIZE : -> [Nat] .				---- Initial proposer list size 
-    op #VCOMPROMIZED : -> [Float] .  		---- Probability of an incoming validator being compromized
-    op #NT-DELAY : -> [Float] .				---- One-way message transmission delay 
-    op #MAXSEEDVALUE : -> [Nat] .			---- Maximum seed value
-    op #ATTACKTHRESHOLD : -> [Nat] .		---- Lower bound on what the attacker considers sufficient control (on proposers)
-
-    op #INIT-CBALANCE : -> [Nat] .
-    op #INIT-VBALANCE : -> [Nat] .
-    op #CARRIVE-DELAY : -> [Float] .
-    op #VARRIVE-DELAY : -> [Float] .
-    op #CREQ-DELAY : -> [Float] .
-    op #REQ-FEE : -> [Nat] .
-    op #VDEPOSIT : -> [Nat] .
-    op #VDEPOSIT-MIN : -> [Nat] .
-    op #RETRIAL-LIMIT : -> [Nat] .
-	op #INIT-RND-DELAY : -> [Float] .
-
-    eq #RLIMIT = 500.00 .
-    eq #VPINITSIZE = 10 .
-    eq #VINITSIZE = 10 * #VPINITSIZE .
-    eq #VCOMPROMIZED = 0.5 .
-    eq #DROP? = 0 .
-    eq #NT-DELAY = genRandom(0.01, 0.1) .
-    eq #MAXSEEDVALUE = 1000000 .
-    eq #ATTACKTHRESHOLD = #VPINITSIZE / 10 .
-
-    eq #INIT-CBALANCE = 1 .
-    eq #INIT-VBALANCE = 33 .
-    eq #CARRIVE-DELAY = sampleExpWithMean(1.5) .
-    eq #VARRIVE-DELAY = sampleExpWithMean(1.5) .
-    eq #CREQ-DELAY = 0.1 .
-    eq #REQ-FEE = #INIT-CBALANCE / 5 .
-    eq #VDEPOSIT = #INIT-VBALANCE - 1 .
-	eq #VDEPOSIT-MIN = #VDEPOSIT .
-	eq #RETRIAL-LIMIT = 5 . 
-	eq #INIT-RND-DELAY = 0.5 .   
-endm
-
 ---- RANDAO actions
 mod RANDAO-BEHAVIOR is
 	protecting CONFIG .
