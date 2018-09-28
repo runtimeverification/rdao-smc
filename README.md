@@ -3,6 +3,12 @@ This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite th
 
 *Please note that this is work-in-progress, and the model is currently being actively developed.*
 
+*Still to come:*
+1. *Dynamic validator sets*
+2. *VDF Model*
+3. *Properties + analysis*
+4. *Expanded documentation*
+
 *This is part of work being done at Runtime Verificaiton Inc.*
 
 ## Model Basics

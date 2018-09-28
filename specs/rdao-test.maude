@@ -1,3 +1,11 @@
+***(
+*** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
+*** 
+*** Musab A. Alturki
+*** September 2018
+*** Runtime Verifcation Inc. 
+)
+
 set clear rules off .
 set print attribute on .
 
