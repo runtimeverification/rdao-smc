@@ -31,7 +31,7 @@ mod PARAMS is
     op #RETRIAL-LIMIT : -> [Nat] .
 	op #INIT-RND-DELAY : -> [Float] .
 
-    eq #RLIMIT = 500.00 .
+    eq #RLIMIT = 100.00 .
     eq #VPINITSIZE = 10 .
     eq #VINITSIZE = 10 * #VPINITSIZE .
     eq #VCOMPROMIZED = 0.5 .
