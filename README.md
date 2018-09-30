@@ -4,19 +4,20 @@ This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite th
 *Please note that this is work-in-progress, and the model is currently being actively developed.*
 
 *Still to come:*
-1. *Dynamic validator sets*
-2. *VDF Model*
-3. *Properties + analysis*
-4. *Expanded documentation*
+1. *VDF Model*
+2. *Properties + analysis*
+3. *Expanded documentation*
 
 *This is part of work being done at Runtime Verificaiton Inc.*
 
 ## Model Basics
-The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator node) or a virtual one (such as an attacker controlling a set of validators) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every event is timestamped. The model currently uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size '#PROP-SIZE' means that a game round will consume exactly `#PROP-SIZE` time slots. 
+The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a validator node) or a virtual one (such as an attacker controlling a set of validators) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every event is timestamped. 
 
-Although the RANDAO process is mostly deterministic, there are a few important sources of non-determinism, which are captured by the model:
+The model uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size `#PROP-SIZE` means that a game round will consume exactly `#PROP-SIZE` time slots. Initially, the state of the protocol is bootstrapped with a validator set of size #VINITSIZE, of which `#VPINITSIZE` validators randomly selected as proposers. The RANDAO contract and the validators are all initialized with pseudo-randomly generated seeds. While the protocol executes, an incoming validator (which could be attacker-controlled) may join the RANDAO process and become available to participate in the next round of the game. 
 
-1. In each game round, (honest) proposers generate new random seeds for future rounds of the game in which they participate.
+Although the RANDAO process itself is mostly deterministic, there are a few important sources of non-determinism, which are captured by the model:
+
+1. In each game round, (honest) proposers generate new random seeds for future rounds of the game in which they participate. Furthermore, new validators may join the network (and some of which may be compromized by the attacker).
 2. Uncertainty in attacker behavior is probabilistically captured, based on a suitable attack model.
 3. Environment uncertainties, such as transmission delays and network failures, are also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
 

@@ -230,6 +230,8 @@ mod ATTRIBUTES is
     op vcomp:_ 			: CVRecordList	-> Attribute [format (m o d)] .
     op vcomp-size:_     : Nat			-> Attribute [format (m o d)] .
     op strategy:_ 		: Strategy 		-> Attribute [format (m o d)] .
+    op vcount:_ 		: Nat 			-> Attribute [format (m o d)] .
+    op next-comp:_ 		: Bool 			-> Attribute [format (m o d)] .
 endm
 
 ---- Actor names
@@ -256,11 +258,11 @@ mod MESSAGES is
 	op  nextRound 	:   					-> Content . --- A self message to schedule advancing the process to the next round 
 	op  doReveal	: Nat					-> Content . --- A self message to schedule a possible reveal action at the right slot 
 	op  doReveal*	:				 		-> Content . --- A self message to schedule the second step of the reveal action 
+	op  spawn		:						-> Content . --- simulates client and validator arrivals
+	op  join 		: ActorName Nat Hash 	-> Content . --- join the validator set
 
 	---- not used so far
 	op  init		:				 		-> Content . --- initialize 
-	op  spawn		:				-> Content . --- simulates client and validator arrivals
-	op  join       : ActorName Nat -> Content . --- join the validator set
 	op  leave      : ActorName Nat -> Content . --- leave the validator set	
 	op  approved   : ActorName     -> Content . --- Approve a join request
 	op  rejected   : ActorName     -> Content . --- Reject a join request
@@ -313,6 +315,7 @@ mod RANDAO-BEHAVIOR is
  	<name: BID |		
 			seed:           S, 
 			vappr-size:     N,
+			vpending-size:	N',
 			AS >
  	<name: RID |		
 			status:	ready, 
@@ -326,13 +329,14 @@ mod RANDAO-BEHAVIOR is
     	<name: BID |		
 				seed:           S, 
 				vappr-size:     N,
+				vpending-size:	N',
 				AS >
     	if L > #VPINITSIZE then
     		---- End of game round: prepare to advance to the next round 
  			<name: RID |		
 					status:	processing, 
 					proposers:	([ VID , B ] ; CL),       
-					prop-ilist: computeNewIList(N, #VPINITSIZE, S),       
+					prop-ilist: computeNewIList(N + N', #VPINITSIZE, S),       
 					pnext:	1,
 					AS' >
     		{ TG | SL }
@@ -365,7 +369,10 @@ mod RANDAO-BEHAVIOR is
  	limit(true, D)
  	round(R)
  	<name: BID |		
-			vappr:          VHL, 
+			vappr:          VHL,
+			vappr-size:		N,
+			vpending:		VHL',
+			vpending-size:	N', 
 			AS >
 	<name: a   |
 			vcomp: 			CVL,
@@ -384,7 +391,10 @@ mod RANDAO-BEHAVIOR is
     =>  limit(TG <= #RLIMIT * D, D)
     	round(R + 1.0)
 	 	<name: BID |		
-				vappr:          updateRewards(VHL, CL), 
+				vappr:          (updateRewards(VHL, CL) ; VHL'), 
+				vappr-size:		(N + N'),
+				vpending:		nilVHL,
+				vpending-size:	0, 
 				AS >
 		<name: a   |
 				vcomp: 			setNewCVRoles(CVL, IL),
@@ -393,7 +403,7 @@ mod RANDAO-BEHAVIOR is
 				status:			ready, 
 				balance: 		J,
 				success-rounds: s(I), 
-				proposers:      formProposers(VHL, IL),
+				proposers:      formProposers(VHL ; VHL', IL),
 				prop-ilist:		IL, 
 				prop-size:     	M,
 				pnext:          1,
@@ -487,77 +497,24 @@ mod RANDAO-BEHAVIOR is
     	[print TG ": RProcessReveal received from " VID] .
 
 ---(
----- OLD
- crl [RAddV] : 
+ rl [BValJoin] : 
     limit(true, D)
-	<name: RID  |
-			vlist: PL,
-			v-cnt: N,
-			balance: M,
-			AS > 
+	<name: BID |												
+		status:         ready,
+		vpending:       VHL, 
+		vpending-size:  N,
+		AS >        
     { TG | SL }
-    (RID <- join(VID, J))
+    (BID <- join(VID, J, H))
     => limit(TG <= #RLIMIT * D, D)
-		<name: RID  |
-				vlist: (PL ; < VID, J >),
-				v-cnt: s(N),
-				balance: (M + J),
-				AS > 
-    	mytick(insert({ TG | SL }, [TG + #NT-DELAY, (VID <- approved(RID)), #DROP?]))
-    if J >= #VDEPOSIT-MIN 
-    [print TG ": RAddValidator: " RID " validator " VID " joined"] .
-
- crl [RRejV] : 
-    limit(true, D)
-	<name: RID  |
-			vlist: PL,
-			v-cnt: N,
-			balance: M,
-			AS > 
-    { TG | SL }
-    (RID <- join(VID, J))
-    => limit(TG <= #RLIMIT * D, D)
-		<name: RID  |
-				vlist: PL,
-				v-cnt: N,
-				balance: M,
-				AS > 
-    	mytick(insert({ TG | SL }, [TG + #NT-DELAY, (VID <- rejected(RID)), #DROP?]))
-    if J < #VDEPOSIT-MIN 
-    [print TG ": RAddValidator: " RID " validator " VID " joined"] .
-
-  rl [RInitRND] : 
-    limit(true, D)
-	<name: RID  |
-			clist: CL,
-			c-cnt: N,
-			vlist: PL,
-			v-cnt: N',
-			balance: M,
-			r-stime: TS,
-			r-vl: PL',
-			AS > 
-    { TG | SL }
-    (RID <- initRN)
-    => limit(TG <= #RLIMIT * D, D)
-		<name: RID  |
-				clist: CL,
-				c-cnt: N,
-				vlist: PL,
-				v-cnt: N',
-				balance: M,
-				r-stime: TG,
-				r-vl: PL,
-				AS > 
-    	mytick(insertList({ TG | SL }, genSL(TG + #NT-DELAY, getIDs(PL), solicit(RID))))
-    [print TG ": RInitRND: " RID " initiated RND process with " PL] .
-
-	op genSL : Float ActorNameList Content -> ScheduleList .
-	eq genSL(T, nilAN, C) = nil .
-	eq genSL(T, A ; AL, C) = [T + genRandom(0.01,0.02), A <- C, #DROP?] .
-
+		<name: BID |												
+			status:         ready,
+			vpending:       (VHL ; < VID, H , J >), 
+			vpending-size:  s(N),
+			AS >        
+    	mytick({ TG | SL })
+    [print TG ": BValJoin: " VID " Added to pending list"] .
 )
-
 endm
  
 mod VALIDATOR-BEHAVIOR is
@@ -568,9 +525,9 @@ mod VALIDATOR-BEHAVIOR is
 	vars AS AS' AS'' : AttributeSet . 
 	vars T TG TS TS' TR TR' D R F : Float .
 	vars SL SL' : ScheduleList . 
-	vars CID VID RID OID AID BID : ActorName .
+	vars CID VID RID OID AID BID VGID : ActorName .
   	vars H : Hash .
-	vars I J K L M N N' : Nat .
+	vars I J K L M M' N N' : Nat .
 	vars AL : ActorNameList .
 	vars VHL VHL' : VRecordList .
 	vars CVL CVL' : CVRecordList .
@@ -588,6 +545,17 @@ mod VALIDATOR-BEHAVIOR is
 	vars SDL : IList .
 	vars IS : ISet .
 
+	op spawnValidator : Nat ActorName Nat Seed Bool -> [Object] .
+	eq spawnValidator(N, RID, K, S, B) 
+		= <name: v(N)  |										---- A validator with unique id v(N)
+				status: ready,									---- status of a validator
+				contract: RID,									---- the RANDAO contract with which the validator interacts 
+				balance: K,										---- current validator balance
+				slots: mtIS,					 				---- the time slot assigned (mtIS means not a committee member)
+				compromised: B,  	---- true iff controled by the attacker
+				current-seed: S,	---- random seed for current round 
+				next-seed: sampleUniWithInt(#MAXSEEDVALUE)    	---- random seed for next round 
+			> .	
 
 	---- A validator records an assigned slot and schedules a reveal message during that slot
   rl [VRecordSlot] : 
@@ -801,6 +769,46 @@ mod VALIDATOR-BEHAVIOR is
 		  fi .
 
 
+  rl [VArrive] : 
+    limit(true, D)
+	<name: BID |												
+		vpending:       VHL, 
+		vpending-size:  M,
+		AS >
+    <name: AID  | 
+    	vcomp: CVL, 
+    	vcomp-size: M', 
+    	AS' >  								
+    <name: VGID |
+	    	vcount: N, 
+	    	contract: RID,
+	    	balance: K,
+	    	next-seed: S,
+		   	next-comp: B,
+	    	AS'' >
+    { TG | SL }
+    (vg <- spawn)
+    => limit(TG <= #RLIMIT * D, D)
+		<name: BID |												
+			vpending:       (VHL ; < v(N), h(S) , (- #VDEPOSIT) >), 
+			vpending-size:  s(M),
+			AS >
+	    <name: AID  | 
+	    	vcomp: (CVL ; if B then < v(N), S, mtCRS > else < v(N), 0, honest > fi), 
+	    	vcomp-size: s(M'), 
+	    	AS' >  								
+    	<name: VGID |
+		    	vcount: s(N), 
+		    	contract: RID,
+		    	balance: K,
+		    	next-seed: sampleUniWithInt(#MAXSEEDVALUE),
+		    	next-comp: sampleBerWithP(#VCOMPROMIZED),
+	    		AS'' >
+		spawnValidator(N, RID, K - #VDEPOSIT, S, B)   
+		mytick(insert( { TG | SL }, 
+			[ TG + #VARRIVE-DELAY, (VGID <- spawn) , 0]))
+			---- [ TG + #NT-DELAY,      (BID <- join(v(N), #VDEPOSIT, h(S))), #DROP? ] ))
+	[print TG ": VArrive: s(" N ")"] .
 
 
 
@@ -809,29 +817,6 @@ mod VALIDATOR-BEHAVIOR is
 ---(
 ---- OLD
 	---- a new validator arrives and requests to join
-  rl [VArrive] : 
-    limit(true, D)
-    <name: vg |
-	    	cnt: K, 
-	    	contract: RID,
-	    	AS >
-    { TG | SL }
-    (vg <- spawn)
-    => limit(TG <= #RLIMIT * D, D)
-    	<name: vg |
-	    		cnt: s(K), 
-		    	contract: RID,
-	    		AS >
-		<name: v(K)  |
-				status: waiting,
-				balance: (#INIT-VBALANCE - #VDEPOSIT),
-		    	contract: RID,
-		    	seed: random(counter),
-				rnd: 0,
-				AS >   
-		insert( { TG | SL }, [ TG + #VARRIVE-DELAY, (vg <- spawn) , #DROP?] )
-	    (r <- join(v(K), #VDEPOSIT, ))       
-	[print TG ": VArrive: " K] .
 
 	---- a validator is approved to the validator set 
  rl [VApproved] : 
@@ -964,19 +949,8 @@ mod INIT-STATE is
 	eq spawnValidatorSet(0, RID, K) 
 		= null .
 	eq spawnValidatorSet(s(N), RID, K) 
-		= spawnValidator(N, RID, K) spawnValidatorSet(N, RID, K) .
-
-	op spawnValidator : Nat ActorName Nat -> [Object] .
-	eq spawnValidator(N, RID, K) 
-		= <name: v(N)  |										---- A validator with unique id v(N)
-				status: ready,									---- status of a validator
-				contract: RID,									---- the RANDAO contract with which the validator interacts 
-				balance: K,										---- current validator balance
-				slots: mtIS,					 				---- the time slot assigned (mtIS means not a committee member)
-				compromised: sampleBerWithP(#VCOMPROMIZED),  	---- true iff controled by the attacker
-				current-seed: sampleUniWithInt(#MAXSEEDVALUE),	---- random seed for current round 
-				next-seed: sampleUniWithInt(#MAXSEEDVALUE)    	---- random seed for next round 
-			> .	
+		= spawnValidator(N, RID, K, sampleUniWithInt(#MAXSEEDVALUE), sampleBerWithP(#VCOMPROMIZED)) 
+		  spawnValidatorSet(N, RID, K) .
 
 	---- Generate a list of (empty) public validator records
 	op makeVL : Nat -> [VRecordList] .
@@ -1027,6 +1001,14 @@ mod INIT-STATE is
 			pnext:          1                   ---- next validator (time slot) to process
 		> .
 
+	op initVGen : Nat ActorName Nat -> [Object] .
+	eq initVGen(N, RID, K) = 
+		<name: vg | 
+			vcount: N, 
+			contract: RID,
+			balance: K, 
+			next-seed: sampleUniWithInt(#MAXSEEDVALUE),
+			next-comp: sampleBerWithP(#VCOMPROMIZED) > .
 
  	--- Initial State  
 	rl initState =>
@@ -1079,7 +1061,12 @@ mod INIT-STATE is
 		  <name: r | prop-ilist: IL, prop-size: M, AS > 
 		  <name: a | vcomp: setNewCVRoles(CVL, IL), AS' > 
 		  VC 
-		  mytick(insert({ 0.0 | createInitSL(IL, M) }, [1.0, r <- nextSlot(2), #DROP?])) .
+		  if #ISDYNVSET? then
+			initVGen(#VINITSIZE, r, #INIT-VBALANCE)
+			mytick(insertList({ 0.0 | createInitSL(IL, M) }, [1.0, r <- nextSlot(2), #DROP?] ; [#VARRIVE-DELAY, vg <- spawn, 0] )) 		  	
+		  else
+			mytick(insert({ 0.0 | createInitSL(IL, M) }, [1.0, r <- nextSlot(2), #DROP?])) 
+		  fi .
 
 endm
 

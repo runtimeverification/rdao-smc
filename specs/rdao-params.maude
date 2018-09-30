@@ -19,11 +19,11 @@ mod PARAMS is
     op #NT-DELAY : -> [Float] .				---- One-way message transmission delay 
     op #MAXSEEDVALUE : -> [Nat] .			---- Maximum seed value
     op #ATTACKTHRESHOLD : -> [Nat] .		---- Lower bound on what the attacker considers sufficient control (on proposers)
+    op #ISDYNVSET? : -> [Bool] .
+    op #VARRIVE-DELAY : -> [Float] .
 
     op #INIT-CBALANCE : -> [Nat] .
     op #INIT-VBALANCE : -> [Nat] .
-    op #CARRIVE-DELAY : -> [Float] .
-    op #VARRIVE-DELAY : -> [Float] .
     op #CREQ-DELAY : -> [Float] .
     op #REQ-FEE : -> [Nat] .
     op #VDEPOSIT : -> [Nat] .
@@ -39,11 +39,11 @@ mod PARAMS is
     eq #NT-DELAY = genRandom(0.01, 0.1) .
     eq #MAXSEEDVALUE = 1000000 .
     eq #ATTACKTHRESHOLD = #VPINITSIZE / 10 .
+    eq #ISDYNVSET? = true .
+    eq #VARRIVE-DELAY = sampleExpWithMean(1.5) .
 
     eq #INIT-CBALANCE = 1 .
     eq #INIT-VBALANCE = 33 .
-    eq #CARRIVE-DELAY = sampleExpWithMean(1.5) .
-    eq #VARRIVE-DELAY = sampleExpWithMean(1.5) .
     eq #CREQ-DELAY = 0.1 .
     eq #REQ-FEE = #INIT-CBALANCE / 5 .
     eq #VDEPOSIT = #INIT-VBALANCE - 1 .
