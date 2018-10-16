@@ -8,9 +8,9 @@
 
 set clear rules off .
 set print attribute on .
+----set print format off .
 
 load apmaude.maude
-load rdao-params.maude
 load rdao.maude
 
 rew initState .

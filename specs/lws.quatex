@@ -1,0 +1,2 @@
+lwsExp( ) = { s.rval(1) } ;
+eval E[ # lwsExp( ) ] ;

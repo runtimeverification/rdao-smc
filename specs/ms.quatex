@@ -1,0 +1,2 @@
+msExp( ) = { s.rval(0) } ;
+eval E[ # msExp( ) ] ;

@@ -3,146 +3,316 @@
 *** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
 *** 
 *** Musab A. Alturki
-*** September 2018
+*** October 2018
 *** Runtime Verifcation Inc. 
 )
 
----- Operators for generating pseudo-random numbers and sampling from probability distributions 
+***( 
+*** Sampler Module
+***
+*** This module defines a set of operators for sampling from different
+*** probability distributions. The definitions use Maude's pseudo-random  
+*** number generator function 'random', which uses Maude's internal  
+*** 'counter' operator to cycle through the domain of 'random'. For more 
+*** details, please refer to the Maude Manual.
+***
+)
 mod SAMPLER is
-	protecting RANDOM .
-	protecting COUNTER .
-	protecting CONVERSION .
+  protecting RANDOM .
+  protecting COUNTER .
+  protecting CONVERSION .
 
- 	---- Basic random numbers 
+  ---- Basic random numbers
 
-	----  A float:  [0, 1]
-	op rand : -> [Float] .
-	rl [rnd] : rand => float(random(counter) / 4294967295) .
+  ----  A float in the range [0, 1]
+  op rand : -> [Float] .
+  rl [rnd] : rand => float(random(counter) / 4294967295) .
 
-	----  A rational:  [0, 1]
-	op rrand : -> [Rat] .
-	rl [rrnd] : rrand => random(counter) / 4294967295 .
+  ----  A rational in the range [0, 1]
+  op rrand : -> [Rat] .
+  rl [rrnd] : rrand => random(counter) / 4294967295 .
 	
-	----  A positive float:  (0, 1]
-	op prand : -> [Float] .
-	rl [prnd] : prand => float(s(random(counter)) / 4294967296) .
+  ----  A positive float in the range (0, 1]
+  op prand : -> [Float] .
+  rl [prnd] : prand => float(s(random(counter)) / 4294967296) .
 
-	----  A positive rational:  (0, 1]
-	op prrand : -> [Rat] .
-	rl [prrnd] : prrand => s(random(counter)) / 4294967296 .
+  ----  A positive rational in the range (0, 1]
+  op prrand : -> [Rat] .
+  rl [prrnd] : prrand => s(random(counter)) / 4294967296 .
 	
-	---- Sampling from probability distributions
 
-	vars R Min Max : Float .
-	vars N S : Nat .
+  ---- Sampling from probability distributions
 
-	---- Bernoulli with bias R
-	op sampleBerWithP : Float -> [Bool] .
-	rl sampleBerWithP(R) => if rand < R then true else false fi . 
+  vars R Min Max : Float .
+  vars N S : Nat .
 
-	---- Uniform from the list [0..(N-1)]  
-	op sampleUniWithInt : Nat -> [Nat] .       
-	rl sampleUniWithInt(N) => random(counter) rem N .
+  ---- Bernoulli with bias R
+  op sampleBerWithP : Float -> [Bool] .
+  rl sampleBerWithP(R) => if rand < R then true else false fi . 
 
-	---- Uniform over the range [Min,Max]
-	op genRandom : Float Float -> [Float] .
-	rl genRandom(Min, Max) => rand * (Max - Min) + Min .
+  ---- Uniform from the list [0..(N-1)]  
+  op sampleUniWithInt : Nat -> [Nat] .       
+  rl sampleUniWithInt(N) => random(counter) rem N .
 
-	---- Exponential with mean R  	
-	op sampleExpWithMean : Float -> [Float] .
-  	rl sampleExpWithMean(R) => R * (- log(rand)) .
+  ---- Uniform over the range [Min,Max]
+  op genRandom : Float Float -> [Float] .
+  rl genRandom(Min, Max) => rand * (Max - Min) + Min .
 
-	---- Exponential with rate R
-  	op sampleExpWithRate : Float -> [Float] .
-   	rl sampleExpWithRate(R) => (- log(rand)) / R .
- 	
+  ---- Exponential with mean R  	
+  op sampleExpWithMean : Float -> [Float] .
+  rl sampleExpWithMean(R) => R * (- log(rand)) .
+
+  ---- Exponential with rate R
+  op sampleExpWithRate : Float -> [Float] .
+  rl sampleExpWithRate(R) => (- log(rand)) / R .	
 endm
 
----- Actor names (identifiers) and lists of actor names
-mod ANAMELIST is 
-	protecting CONVERSION .
 
-	sorts ActorName ActorNameList .
-	subsort ActorName < ActorNameList .
+***( 
+*** Actor Objects
+***
+*** This module defines a simple data structure representing an actor object. An actor 
+*** is uniquely identified by a name ActorName and may have a set of attributes 
+*** AttributeSet, which is a comma-separated set of attributes. The attributes 
+*** themselves are deferred to a later module as they are application-specific.
+***
+)
+mod ACTOR is
+  protecting CONVERSION .
 
-	op nilAN : -> ActorNameList [ctor] .
-	op _;_ : ActorNameList ActorNameList -> ActorNameList [ctor assoc id: nilAN] .
-endm
-
----- Actor objects, messages and configurations
-mod APMAUDE is
-	protecting ANAMELIST .
-
-  sorts Attribute AttributeSet Content .
-  sorts Actor Msg Object Config .
+  ---- Attributes and sets of attributes 
+  sorts Attribute AttributeSet .
   subsort Attribute < AttributeSet .
-  subsort Actor < Object .
-  subsort Msg < Object .
-  subsort Object < Config .
-  ----subsort Float < Config .
-
-  --- Messages
-  op empty : -> Content .
-  op _<-_ : ActorName Content -> Msg [prec 40 format (g o r o)] .
-
-  --- Actors
-  op <name:_|_> : ActorName AttributeSet -> Actor [format (nb! g b! nto b! o)] .
+  ---- AttributeSet constructors: 
+  ----   *  mt for the empty set of attributes, and 
+  ----   *  _,_ an associative and commutative juxtaposition operator with identity mt
+  ---- For example, the set a1 , a2 , a3 is a non-empty set of attributes 
   op mt : -> AttributeSet .
- 
-  --- Configurations
-  op null : -> Config .
-
-  op __ : Config Config -> Config [assoc comm id: null] .
   op _,_ : AttributeSet AttributeSet -> AttributeSet [assoc comm id: mt format (d d nt d) ] .
 
-  --- Scheduler and scheduled messages
-  sorts Scheduler ScheduleElem ScheduleList .
-  subsort ScheduleElem < ScheduleList .
-  subsort Scheduler < Config .
+  --- Actors and ActorNames
+  --- Note that what constitutes an actor name is not yet specified (will be specified later).
+  --- Example actor object: <name: N | a1 , a2 , a3 >  
+  sorts Actor ActorName .
+  op <name:_|_> : ActorName AttributeSet -> Actor [format (nb! g b! nto b! o)] .
+ endm
 
+
+***( 
+*** Messages 
+***
+*** This module defines a simple data structure representing a message. A message
+*** is a pair of the form A <- C with A the target actor's name and C the message 
+*** contents. What constitutes valid message contents is again application-specific
+*** and is defined later.
+***
+)
+mod MESSAGE is
+  protecting ACTOR .
+
+  ---- Message content (Note: a message can have no content, represented by the 
+  ---- 'empty' content constructor)
+  sort Content .
+  op empty : -> Content .
+
+  ---- Messages
+  sort Msg .
+  ---- Message constructor
+  ---- e.g. A <- C is a message targeted to the actor named A with content C 
+  op _<-_ : ActorName Content -> Msg [prec 40 format (g o r o)] .
+endm
+
+
+***( 
+*** The Scheduler 
+***
+*** This module defines the scheduler object and the different insertion operations
+*** on it. There will be exactly one scheduler object in a configuration of actors.
+*** The scheduler is important as it maintains the global time of the configuration
+*** and manages the delayed delivery of messages to their target actors. A scheduler 
+*** object has the form {T | SL}, where T is the global time and SL is a time-ordered
+*** list of delayed messages (called scheduled elements). The insertion operations
+*** insert a given delayed message (or messages) into their appropriate positions
+*** in the list of scheduled elements as to maintain the total ordering based on
+*** time delays. For example, the following is an instance of Scheduler
+*** 
+***  { 5.2 | [6.3, M1, 0] ; [7.2, M2, 0] ; [7.9, M3, 0] }
+***
+*** This says that the current global time is 5.2 (we model a dense time domain using
+*** floating point numbers), and that there three scheduled messages: M1 to be 
+*** delivered at time 6.3, M2 at time 7.2 and M3 at time 7.9. Note that the current  
+*** global time wiil always be the least time value that appears in the scheduler
+*** (since all delayed messages are to be delivered some time in the future, and once
+*** it is time to deliver a message, it is immediately removed from the scheduler).
+)
+mod SCHEDULER is
+  protecting MESSAGE .
+
+  --- Scheduler 
+  sorts Scheduler .
+  --- The Scheduler constructor 
+  op {_|_} : Float ScheduleList -> Scheduler [format (nb! r b! o b! o)] .
+
+  --- Scheduled elements (delayed messages)
+  sorts ScheduleElem ScheduleList .
+  subsort ScheduleElem < ScheduleList .
+
+  ---- A scheduled element constructor 
+  ---- An element has the form: [T, M, D]: 
+  ----   * T -> time of delivery, 
+  ----   * M -> the message, 
+  ----   * D -> is the message to be dropped? (0 for no, 1 for yes) 
+  ----          (this can be used to model lossy communication channels) 
+  op [_,_,_] : Float Msg Nat -> ScheduleElem .
+
+  ---- Scheduled element list constructors
+
+  ---- A list of scheduled elements is either the empty list nil or an associative 
+  ---- juxtaposition of scheduled elements constructed by the semi-colon
+  ---- e.g. [6.3, M1, 0] ; [7.2, M2, 0] ; [7.9, M3, 0] is a valid ScheduleList
   op  nil : -> ScheduleList .
   op  _;_ : ScheduleList ScheduleList -> ScheduleList [assoc id: nil] .
 
-  op [_,_,_] : Float Msg Nat -> ScheduleElem .  --- [t, m, p]: t -> time, m -> message, p -> drop?
-  op {_|_} : Float ScheduleList -> Scheduler [format (nb! r b! o b! o)] .
+  ---- Insertion operation on a list of scheduled elements
+
+  vars T1 T2 GT : Float .
+  vars D : Nat .
+  vars SL SL' : ScheduleList .
+  vars E : ScheduleElem .
+  vars M1 M2 : Msg .
+
+  ---- To insert an element into a scheduler means to insert it into its list 
+  ---- of scheduled elements 
   op insert : Scheduler ScheduleElem -> Scheduler .
+  eq insert({ GT | SL },E) = { GT | insert(SL,E) } .
+
+  ---- Inserting a scheduled element into a list of scheduled elements
+  ---- The insertion function guarantees that the resulting list will have its
+  ---- scheduled elments totally ordered in non-decreasing time of delivery. 
+  ---- Note that ties (elements with exactly the same time-of-delivery values) 
+  ---- are broken by giving priority to *older* elements that already exist in
+  ---- the list.  
   op insert : ScheduleList ScheduleElem -> ScheduleList .
+  ---- messages deemed lost are not inserted
+  eq insert(SL , [ T2 , M2 , 1]) 
+      = SL .  
+  ---- inserting an element into the empty list returns that element as the 
+  ---- resulting single-element list 
+  eq insert( nil , [ T2 , M2 , 0]) 
+      = [ T2 , M2 , 0] .
+  ---- recursively find the correct position for the element being inserted
+  eq insert([ T1 , M1 , D] ; SL , [ T2 , M2 , 0]) = 
+       if T1 <= T2 then [ T1 , M1 , D] ; insert(SL, [ T2 , M2 , 0]) 
+                   else ([ T2 , M2 , 0] ; [ T1 , M1 , D] ; SL) fi .
+
+  ---- These two operators generalize insertion to mutiple elements (a list
+  ---- of elements). The generalization is straightforward: inserting a list 
+  ---- SL1 into SL2 proceeds by inserting each element in SL1 into SL2 in turn.
+
+  ---- As above: to insert a list into a scheduler means to insert it into its list 
+  ---- of scheduled elements 
   op insertList : Scheduler ScheduleList -> Scheduler .
+  eq insertList({ GT | SL }, SL') = { GT | insertList(SL, SL') } .
+
+  ---- Inserting a list into another means inserting each element in the first list
+  ---- list into the second, one-by-one.
   op insertList : ScheduleList ScheduleList -> ScheduleList .
-
-  --- Operations on configurations 
-  op tick : Config -> Config .
-  op mytick : Scheduler -> Config .
-  op global-time : Scheduler -> Float .
-  op getTime : Config -> Float .
-	
-  var t1 t2 t gt : Float .
-  var C : Config .
-  var O O1 : Object .
-  var p i : Nat .
-  var SL SL' : ScheduleList .
-  var e : ScheduleElem .
-  var M1 M2 : Msg .
-
-  eq global-time({ gt | SL }) = gt .
-  eq getTime(C {gt | SL}) = gt .  
-
-  eq insert({ gt | SL },e) = { gt | insert(SL,e) } .
-  eq insert(SL , [ t2 , M2 , 1]) = SL .   
-  eq insert([ t1 , M1 , p] ; SL , [ t2 , M2 , 0]) = 
-       if t1 < t2 then [ t1 , M1 , p] ; insert(SL, [ t2 , M2 , 0]) 
-                  else ([ t2 , M2 , 0] ; [ t1 , M1 , p] ; SL) fi .
-  eq insert( nil , [ t2 , M2 , 0]) = [ t2 , M2 , 0] .
-
-  eq insertList({ gt | SL }, SL') = { gt | insertList(SL, SL') } .
-  eq insertList(SL , [t2 , M2, p] ; SL') = insertList( insert(SL, [t2, M2, p]), SL' ) .
+  ---- inserting an empty list yields the same original list
   eq insertList( SL , nil ) = SL .
+  ---- inserting each element into the list one-by-one, recursively.
+  eq insertList(SL , [T2 , M2, D] ; SL') = insertList( insert(SL, [T2, M2, D]), SL' ) .
+endm
 
-  eq mytick({ gt | [ t1 , M1 , p] ; SL }) = M1 { t1 | SL } .
-  
-  --- The initial state operator 
+
+***( 
+*** Actor PMaude
+***
+*** This module defines the abstract state and state operations of
+*** an Actor system, which is the representation that will be used in 
+*** later modules to model the RANDAO scheme. The state is modeled as a 
+*** configuration (a multiset) of Actor objects. Actors communicate
+*** asynchronously via message passing. To help avoid any unquantified 
+*** non-determinism, which is required for statistical verification 
+*** to apply (see references given in the readme file for more details), 
+*** a scheduler object is used to enforce a total (time) ordering on 
+*** messages in transit. The scheduler ensures that exactly one message 
+*** (the next message to be processed by an actor in the system) is  
+*** available at any given time. When an actor emits a message, it is 
+*** inserted into its appropriate place in the scheduler's time-ordered
+*** list of scheduled messages. As time elapses, messages are extracted
+*** in order and one-by-one from the list and delivered to their target
+*** actors for processing. Upon consuming a message, an actor may update 
+*** its internal state and emit zero or more new messages, which are 
+*** inserted in the scheduler. This process may continue indifinitely, 
+*** or until a stopping condition is satified (a time limit is reached,
+*** for example).  
+***
+)
+mod APMAUDE is
+  protecting SCHEDULER .
+
+  ---- Object and configuration types
+  ---- Actors, messages and schedulers are all objects
+  sorts Object Config .
+  subsort Actor Msg Scheduler < Object < Config .
+
+  ---- Configuration constructors (in addition to actors, messages and 
+  ---- schedulers as above):
+  ---- null: the empty configuration 
+  op null : -> Config .
+  ---- the (empty) associative and commutative juxtaposition of 
+  ---- configurations with identity null.
+  op __ : Config Config -> Config [assoc comm id: null] .
+
+  ---- Operations on configurations:
+  vars T1 T2 GT : Float .
+  vars C : Config .
+  vars D : Nat .
+  vars SL : ScheduleList .
+  vars M1 M2 : Msg .
+
+  ---- mytick: is an internal operation (invisible to PVeStA) that causes 
+  ---- the global time to advance to the next point in time when the 
+  ---- next scheduled message is to be delivered, and makes that message
+  ---- available for its target actor to consume and process. mytick specifies
+  ---- the low-level mechanism of advancing time and extracting messages 
+  ---- from the scheduler. 
+  op mytick : Scheduler -> Config .
+  eq mytick({ GT | [ T1 , M1 , D] ; SL }) = M1 { T1 | SL } .
+
+
+  ---- The follwing operations define an interface to PVeStA, and should not be 
+  ---- altered: 
+
+  ---- Returns the current global time of a configuration (using its scheduler)
+  ---- Recall that there is exactly one scheduler object in a configuration 
+  op getTime : Config -> Float .
+  eq getTime(C {GT | SL}) = GT .  
+
+  ---- tick: causes the system to transition from its current state to
+  ---- another state by allowing time to advance so that scheduled messages 
+  ---- can be delivered and processed. Note that a single tick could result
+  ---- in multiple rounds of execution and multiple messages being delivered
+  ---- and processed, and thus called a *macro* step in the system. tick is 
+  ---- left unspecified at this stage to allow the specification writer to 
+  ---- desing how this macro step of the system is defined.  
+  ---- 
+  ---- Note that an alternative design would have used tick for mytick above
+  ---- so that a step in the system is taken to be exactly one step of advancing
+  ---- time and processing exactly one message. This design would however be 
+  ---- extremly inefficnetly executable and restricts the desinger's ability 
+  ---- to manage the size of execution rounds in the system.
+  op tick : Config -> Config .
+
+
+  ---- The initial state operator 
+  ---- The exact specification is application-specific and is therefore deferred
   op initState : -> Config .
 
+  ---- The (indexed) satisfiability and quantitative formula operators 
+  ----  * sat(I, C) is the Boolean value of the I'th satisfiability formula on C  
+  ----  * val(I, C) is the Float value of the I'th quantitative formula on C
+  ---- Again, these are all specified by the application 
   op sat : Nat Config -> Bool .
   op val : Nat Config -> Float .
 endm	
