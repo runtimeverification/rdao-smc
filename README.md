@@ -4,8 +4,8 @@ This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite th
 *Please note that this is work-in-progress, and the model is currently being actively developed.*
 
 *Still to come:*
-1. *VDF Model* (?) (VDF provides strong guarantees suitable for worst-case type of analysis -- not so sure that VDF modeling would fit the probabilistic model)
-2. *Properties + analysis*
+1. *VDF Model* (?) (VDFs provide strong guarantees suitable for worst-case type of analysis -- not so sure that VDF modeling would fit the probabilistic model)
+2. *analysis*
 
 *This is part of work being done at Runtime Verificaiton Inc.*
 
