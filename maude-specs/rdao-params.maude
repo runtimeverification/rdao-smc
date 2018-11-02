@@ -27,13 +27,13 @@ mod PARAMS is
     ---- length of a time slot is exactly one logical time unit)
     ---- e.g. 1000.0 time units (or time slots)
 	op #SIM-TIME-LIMIT : -> [Float] .			
-    eq #SIM-TIME-LIMIT = 100.0 .
+    eq #SIM-TIME-LIMIT = 200.0 .
 
     ---- The number of steps in a cycle (or round) of the game, which is
     ---- also the number of proposers in the list of proposers in any 
     ---- round. 
     op #CYCLE-LENGTH : -> [Nat] .   
-    eq #CYCLE-LENGTH = 4 .
+    eq #CYCLE-LENGTH = 10 .
 
     ---- Initial size of the list of approved validators (the list  
     ---- from which #CYCLE-LENGTH proposers are sampled at the begining
@@ -55,7 +55,7 @@ mod PARAMS is
     ---- attacker), e.g. 0.2 means that, on average, 20% of validators are
     ---- attacker-controlled
     op #ATTACK-PROB : -> [Float] .  		
-    eq #ATTACK-PROB = 0.1 .
+    eq #ATTACK-PROB = 0.5 .
  
     ---- The score function the attacker is trying to optimize for. 
     ---- There are two score functions: 
@@ -117,8 +117,8 @@ mod PARAMS is
     ---- only when #DYNAMIC-VLIST? is true). The delay is usually sampled 
     ---- form an appropriate distribution (typically the exponential 
     ---- distribution)
-    op #VALIDATOR-ARRIVAL-DELAY : -> [Float] .
-    eq #VALIDATOR-ARRIVAL-DELAY = sampleExpWithMean(1.5) .
+    op #VARRIVAL-DELAY : -> [Float] .
+    eq #VARRIVAL-DELAY = sampleExpWithMean(1.5) .
 
     ---- The size in Ether of a validator's deposit to join the network.
     ---- This has no significant role in the current version of the 

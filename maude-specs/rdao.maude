@@ -59,6 +59,31 @@ endm
 
 
 ***( 
+*** Nat Sets
+***
+*** This modules defines a set of natural numnbers using an associative,
+*** commutative and idempotent comma operator with identity mtIS. 
+***  
+*** e.g. 4 , 0 , 2 , 4 , 10 = 0 , 2 , 4 , 10 is a valid set of naturals
+***
+)
+mod NATSET is
+	protecting NAT .
+
+	---- The set of naturals data type 
+	sort NatSet .
+	---- A natural number is a (singlton) set of naturals
+	subsort Nat < NatSet .
+
+	---- Set constructors
+	op mtIS : -> NatSet [ctor] .
+	op _,_ : NatSet NatSet -> NatSet [ctor assoc comm id: mtIS] .
+
+	---- idempotency 
+	eq I:Nat , I:Nat = I:Nat .
+endm
+
+***( 
 *** Nat Lists
 ***
 *** This modules defines a list of natural numnbers using an associative
@@ -69,8 +94,10 @@ endm
 *** e.g. 4 . 0 . 2 . 4 . 10 is a valid list of naturals
 ***
 )
+
 mod NATLIST is
 	extending HASH .
+	protecting NATSET .
 	protecting SAMPLER .
 
 	---- The list of naturals datatype
@@ -85,9 +112,9 @@ mod NATLIST is
 	---- Operations on lists:
 	vars I M N K : Nat .
 	vars S : Seed . 
-	vars IL IL' IL1 IL2 IL1' IL2' : NatList .
+	vars IL IL' IL1 IL1' IL2 IL2' : NatList .
 
-	---- computeNewNatList(N, M, S): 
+	---- sampleIndexList(N, M, S): 
 	---- 	N: the (current) total number of approved validators in the system 
 	----    M: the CYCLE-LENGTH (the number of proposers in the proposer list)
 	----    S: the (starting) seed to be used in computing the list of numbers 
@@ -95,9 +122,9 @@ mod NATLIST is
 	----            the sequence of seeds S, S+1, ... , S+(M-1)
 	----    Note: In an actual implementation of the system, the seed S is used 
 	----          along with a pseudo-random number generator to sample the 
-	----          list of indicies. This is not done here, as it would result 
+	----          list of indices. This is not done here, as it would result 
 	----          in a specification that is very inefficiently executable. 
-	----          The inefficicncy is due to Maude's implementation of the 
+	----          The inefficiency is due to Maude's implementation of the 
 	----          random function being based on the Mersenne Twister RNG (in
 	----          which computing the random value corresponding to S requires
 	----          computing the previous value for S-1). In other words, Maude's 
@@ -106,55 +133,55 @@ mod NATLIST is
 	----          number using an arithmetic combination of the seed S and the
 	----          position in the list for which the number is being generated. 
 	----          We note that this approach is still faithful to the original 
-	----          protocol since the seed S itself is generated pseduo-randomly
+	----          protocol since the seed S itself is generated pseudo-randomly
 	----          (using the function random), and thus, the resulting number 
 	----          is also pseudo-random. 
-	----    e.g.: computeNewNatList(100, 5, 748692346) = 80 . 20 . 52 . 76 . 92
+	----    e.g.: sampleIndexList(100, 5, 748692346) = 80 . 20 . 52 . 76 . 92
 	----
-    op computeNewNatList : Nat Nat Seed -> [NatList] .
-    eq computeNewNatList(N, 0, S) = nilIL .
-    ----eq computeNewNatList(N, s(K), S) = random(S + s(K)) rem N . computeNewNatList(N, K, S) .
-	eq computeNewNatList(N, s(K), S) = (S * s(K) * s(s(K))) rem N . computeNewNatList(N, K, S) .
+    op sampleIndexList : Nat Nat Seed -> [NatList] .
+    eq sampleIndexList(N, 0, S) = nilIL .
+    ----eq sampleIndexList(N, s(K), S) = random(S + s(K)) rem N . sampleIndexList(N, K, S) .
+	eq sampleIndexList(N, s(K), S) = (S * s(K) * s(s(K))) rem N . sampleIndexList(N, K, S) .
 
-    ---- countCompromized(IL1, IL2): 
-    ----    IL1: A list of indicies (the proposers list)
-    ----    IL2: A list of indicies (the compromized validator list)
+    ---- countCompromised(IL1, IL2): 
+    ----    IL1: A list of indices (the proposers list)
+    ----    IL2: A list of indices (the compromised validator list)
     ----    Result: Returns the number of indices in the first list that appear 
-    ----            in the second (and hence the number of compromized validators
+    ----            in the second (and hence the number of compromised validators
     ----            in the proposers list)
-    ----    e.g.: countCompromized(2 . 5 . 3 . 2 . 9 . 4, 1 . 2 . 4 . 5 . 9) = 5
-    ----    e.g.: countCompromized(2 . 5 . 3 . 2 . 9 . 3, 1 . 2 . 4 . 5 . 9) = 4
+    ----    e.g.: countCompromised(2 . 5 . 3 . 2 . 9 . 4, 1 . 2 . 4 . 5 . 9) = 5
+    ----    e.g.: countCompromised(2 . 5 . 3 . 2 . 9 . 3, 1 . 2 . 4 . 5 . 9) = 4
     ---- 
-	op countCompromized : NatList NatList -> [Nat] .
-	eq countCompromized(IL1, IL2) = countCompromized*(IL1, IL2, 0) .
+	op countCompromised : NatList NatList -> [Nat] .
+	eq countCompromised(IL1, IL2) = countCompromised*(IL1, IL2, 0) .
 
-	---- A helper (tail-recursive) function to countCompromized
-	op countCompromized* : NatList NatList Nat -> [Nat] .
-	eq countCompromized*((IL1 . I . IL1'), (IL2 . I . IL2'), N) = countCompromized*((IL1 . IL1'), (IL2 . I . IL2'), s(N)) .
-	eq countCompromized*(IL1, IL2, N) = N [owise] .
+	---- A helper (tail-recursive) function to countCompromised
+	op countCompromised* : NatList NatList Nat -> [Nat] .
+	eq countCompromised*((IL1 . I . IL1'), (IL2 . I . IL2'), N) = countCompromised*((IL1 . IL1'), (IL2 . I . IL2'), s(N)) .
+	eq countCompromised*(IL1, IL2, N) = N [owise] .
 
-    ---- countCompromizedTail(IL1, IL2): 
-    ----    IL1: A list of indicies (the proposers list)
-    ----    IL2: A list of indicies (the compromized validator list)
+    ---- countCompromisedTail(IL1, IL2): 
+    ----    IL1: A list of indices (the proposers list)
+    ----    IL2: A list of indices (the compromised validator list)
     ----    Result: Returns the size of the longest (continuous) tail of indices  
     ----            in the first list that appears in the second (and hence the 
-    ----            number of last validators that are compromized in the 
+    ----            number of last validators that are compromised in the 
     ----            proposers list)
-    ----    e.g.: countCompromizedTail(2 . 5 . 3 . 2 . 9 . 4, 1 . 2 . 4 . 5 . 9) = 3
-    ----    e.g.: countCompromizedTail(2 . 5 . 3 . 2 . 9 . 3, 1 . 2 . 4 . 5 . 9) = 0
+    ----    e.g.: countCompromisedTail(2 . 5 . 3 . 2 . 9 . 4, 1 . 2 . 4 . 5 . 9) = 3
+    ----    e.g.: countCompromisedTail(2 . 5 . 3 . 2 . 9 . 3, 1 . 2 . 4 . 5 . 9) = 0
     ----
-	op countCompromizedTail : NatList NatList -> [Nat] .
-	eq countCompromizedTail(IL1, IL2) = countCompromizedTail*(IL1, IL2, 0) .
+	op countCompromisedTail : NatList NatList -> [Nat] .
+	eq countCompromisedTail(IL1, IL2) = countCompromisedTail*(IL1, IL2, 0) .
 
-	---- A helper (tail-recursive) function to countCompromizedTail
-	op countCompromizedTail* : NatList NatList Nat -> [Nat] .
-	eq countCompromizedTail*((IL1 . I), (IL2 . I . IL2'), N) = countCompromizedTail*(IL1, (IL2 . I . IL2'), s(N)) .
-	eq countCompromizedTail*(IL1, IL2, N) = N [owise] .
+	---- A helper (tail-recursive) function to countCompromisedTail
+	op countCompromisedTail* : NatList NatList Nat -> [Nat] .
+	eq countCompromisedTail*((IL1 . I), (IL2 . I . IL2'), N) = countCompromisedTail*(IL1, (IL2 . I . IL2'), s(N)) .
+	eq countCompromisedTail*(IL1, IL2, N) = N [owise] .
 
 	---- computeScoreFunction(I, IL, IL'):
 	----    I:  The index of the score function to be used 
-	----        0 for countCompromized
-	----        1 for countCompromizedTail
+	----        0 for countCompromised
+	----        1 for countCompromisedTail
 	----    IL: The first list 
 	----    IL: The second list 
 	----    Result: Computes the score of IL and IL' based on the function index I 
@@ -162,31 +189,41 @@ mod NATLIST is
     ----    e.g.: computeScoreFunction(1, 2 . 5 . 3 . 2 . 9 . 4, 1 . 2 . 4 . 5 . 9) = 3
     ----
 	op computeScoreFunction : Nat NatList NatList -> [Nat] .
-	eq computeScoreFunction(0, IL, IL') = countCompromized(IL, IL') .
-	eq computeScoreFunction(1, IL, IL') = countCompromizedTail(IL, IL') .
+	eq computeScoreFunction(0, IL, IL') = countCompromised(IL, IL') .
+	eq computeScoreFunction(1, IL, IL') = countCompromisedTail(IL, IL') .
 
+	---- length(IL):
+	----    I:  A list of nats 
+	----    Result: The length of IL 
+    ----
+	op length : NatList -> [Nat] .
+	eq length(nilIL) = 0 .
+	eq length(I . IL) = s(length(IL)) .
+
+	op toNatSet : NatList -> [NatSet] .
+	eq toNatSet(nilIL) = mtIS .
+	eq toNatSet(I . IL) = I , toNatSet(IL) .
 endm
 
 
 ***( 
-*** Validator Roles
+*** Attacker (Compromised) Validator Roles
 ***
 *** This modules defines data structures specifying validator roles.
 *** A validator role defines the behavior of a validator as a member
 *** of the proposers list. A validator may be honest, in which case 
-*** it behaves according to the protocol. A compromized validator may
+*** it behaves according to the protocol. A compromised validator may
 *** assume one of three roles labeled: isolated, ctailhead and 
 *** ctailtail, depending on its position in the proposers list. An 
-*** isolated validator is one that does not belong to a compromized 
+*** isolated validator is one that does not belong to a compromised 
 *** tail of the list. ctailhead and ctailtail are the validator roles 
-*** for the head and the tail of the compromized tail. We give an
+*** for the head and the tail of the compromised tail. We give an
 *** example below:
 ***  
-*** Example 1: Assuming 3, 5, 7 and 9 are the only compromized 
+*** Example 1: Assuming 3, 5, 7 and 9 are the only compromised 
 ***            validators, in the list of proposers 
 ***                       1 . 2 . 3 . 5 . 4 . 7 . 9
 ***            we have the following roles:
-***            * 1, 2 and 4 are honest
 ***            * 3 and 5 are isolated
 ***            * 7 is a ctailhead
 ***            * 9 is a ctailtail
@@ -205,12 +242,7 @@ endm
 mod ROLES is 
 	protecting NATLIST .
 
-	---- Honest validator role 
-	sort Honest .
-	---- Honest constructor 
-	op honest : -> Honest [ctor] .
-
-	---- Compromized validator role positions: 
+	---- Compromised validator role positions: 
 	---- constructers for isolated, ctailhead(IL) and ctailtail
 	sort CPosition .
 	ops isolated ctailtail : -> CPosition [ctor] .
@@ -218,15 +250,15 @@ mod ROLES is
 
 	---- Roles and Role Sets
 	sort Role CRoleSet CRole .
-	---- A 'Role' is either 'Honest' or a set of slot-indexed compromized
+	---- A 'Role' is a set of slot-indexed compromised
 	---- roles 'CRoleSet'
-	subsort Honest CRoleSet < Role .
+	subsort CRoleSet < Role .
 	---- A single 'CRole' is a (degenerate) instance of 'CRoleSet'
 	subsort CRole < CRoleSet .
 
-	---- A compromized role is a slot-indexed compromized role position 
+	---- A compromised role is a slot-indexed compromised role position 
 	op [_:_] : Nat CPosition -> CRole [ctor].
-	---- A set of compromized roles is constructed by mtCRS, for the empty
+	---- A set of compromised roles is constructed by mtCRS, for the empty
 	---- set, and the associative commutative comma operator with id mtCRS
 	op mtCRS : -> CRoleSet [ctor] .
 	op _,_ : CRoleSet CRoleSet -> CRoleSet [ctor comm assoc id: mtCRS] .
@@ -238,32 +270,35 @@ endm
 ***
 *** This modules defines validator records, which are data structures used 
 *** to maintain details of validators needed for the proper execution of the 
-*** protocol and the attacker. The distinction below between public and 
-*** private records is not really significant; It's, in fact, an unfortunate  
-*** artifact of the how the specification evoloved, and could (should) be 
-*** eliminated in the future. What's important is that a record maintains:
+*** protocol and the attacker. There are two types of validator records: 
+*** (1) general validator records that maintain:
 ***		* The validator's (actor object) name
-***     * The hash of the current seed 
-***     * The validator's profit (in Ether) 
 ***		* The current-round seed
+***     * The hash of the current seed 
 ***     * The next-round seed 
+***     * The validator's profit (in Ether) 
+*** (2) compromised validator records that maintain:
+***		* The validator's (actor object) name
 ***     * The validator's role
 ***
+*** While a general validator record exists for each validator, only 
+*** compromised validators that are part of the proposers list in the
+*** current round have compromised validator records as well.
 )
 mod VRECORD is
 	protecting APMAUDE .
 	protecting NATLIST .
 	protecting ROLES .
 
-	---- Public validator record
+	---- General validator record
 	sort VRecord .
-	---- A public validator record is a triple < A, H, N >, with A the 
+	---- A general validator record is a triple < A, H, N >, with A the 
 	---- validator's name (identifier), H its hash, and N its net balance.
-	op <_,_,_> : ActorName Hash Int -> VRecord [ctor] .
+	op <_,_,_,_,_> : ActorName Seed Hash Seed Int -> VRecord [ctor] .
 
-	---- Public validator record list 
+	---- General validator record list 
 	sort VRecordList .
-	---- A public validator record list is constructed by a single record,
+	---- A general validator record list is constructed by a single record,
 	---- the empty record list nilVHL, or by the associative semi-colon
 	---- operator on record lists, with nilVHL the identity element.
 	subsort VRecord < VRecordList .
@@ -275,7 +310,7 @@ mod VRECORD is
 	---- A private validator record is a quadruple < A, S, S', R >, with A the 
 	---- validator's name (identifier), S and S' are its current and next-round
 	---- seeds respectively, and R its role.
-	op <_,_,_,_> : ActorName Seed Seed Role -> CVRecord [ctor] .
+	op <_,_> : ActorName Role -> CVRecord [ctor] .
 
 	---- Private validator record list 
 	sort CVRecordList .
@@ -297,86 +332,60 @@ endm
 *** a boolean flag indicating whether A successfully revealed its seed. 
 ***
 )
-mod PROPOSERS is
+mod PRECORDS is
 	protecting APMAUDE .
 
 	---- Proposer record 
-	sort Proposer .
-	op [_,_] : ActorName Bool -> Proposer [ctor] .
-	---- Proposer record list 
-	sort ProposerList .
-	subsort Proposer < ProposerList .
-	op nilPL : -> ProposerList [ctor] .
-	op _;_ : ProposerList ProposerList -> ProposerList [ctor assoc id: nilPL] .
+	sort PRecord .
+	op [_,_] : ActorName Bool -> PRecord [ctor] .
+	---- PRecord record list 
+	sort PRecordList .
+	subsort PRecord < PRecordList .
+	op nilPL : -> PRecordList [ctor] .
+	op _;_ : PRecordList PRecordList -> PRecordList [ctor assoc id: nilPL] .
 endm
 
 ***(
 *** Attack strategies
 ***  
 *** This module defines data structures and operations for specifying
-*** attack strategies for compromized validators appearing in the proposers
-*** list's compromized tail (the ones with roles ctailhead and ctailtail). 
-*** An attack strategy is a list of skip instructions (Boolean values) 
-*** instructing validators in the compromized tail to either reveal or skip
-*** their turns in the round. A strategy also comes with a score, which the 
-*** attacker can compute to decide the best attack strategy given the 
-*** current circumstances. The score is a measure of the success of the 
-*** attack (the number of validators the attack can control in the next
-*** round, for example). For instance, the strategy [2 : true . false]
-***	specifies that the next validator should reveal its seed while the one 
-*** after it should remain silent, and that this strategy has a score of 2.  					
-*** 
+*** attack strategies for compromised validators appearing in the proposers
+*** list's compromised tail (the ones with roles ctailhead and ctailtail). 
+*** An attack strategy is a pair [G : S], where G is the index identifying the
+*** strategy and S is its resulting seed. G instructs validators in the
+*** compromised tail to either reveal or skip their turns in a round of the 
+*** game. Although G is a natural number, the binary representation of the 
+*** index G precisely defines the strategy (1 means reveal and 0 means do not
+*** reveal). For example, the strategy indexed 6 (in binary 6 = 110) states
+*** that the first validator skip (the 0 in 110) and the following 
+*** two validators should reveal (the two 1's in 110). Note that the binary
+*** string is read in reverse (the head of the validator list corresponds to
+*** the least significant binary digit). This provides a compact representation 
+*** of strategies that is easy to compute and read. Note that:
+*** 1. the remainder operation G rem 2 gives the current strategy action
+*** 2. the integer quotient G quo 2 returns the rest of the strategy
+*** The seed S is what one would get if the stragey specified by G was applied
+*** to a given initial seed (the RANDAO computed seed). An attacker may 
+*** pre-compute a set of strategies to decide the best attack strategy given  
+*** the current circumstances. 
+***
 )
 mod STRATEGY is
-	protecting NAT .
-
-	---- Skip list 
-	sort SkipList .
-	---- true means reveal, false means refrain 
-	subsort Bool < SkipList .
-	---- A skip list can be empty (nilSKL), or the associative dot 
-	---- juxtaposition of other skip lists with id nilSKL.
-	op nilSKL : -> SkipList [ctor] .
-	op _._ : SkipList SkipList -> SkipList [ctor assoc id: nilSKL] .
+	protecting HASH .
 
 	---- Attack strategy 
 	sort Strategy .
 	---- A strategy is a pair [I : SKL], with SKL is a skip list and I its
 	---- score.
-	op [_:_] : Nat SkipList -> Strategy [ctor] .
+	op [_:_] : Nat Seed -> Strategy .
 
-	---- Attack strategy list 
-	sort StrategyList .
-	---- A strategy list is constructed by a single strategy, the empty
-	---- strategy list nilSTL, or by the associative empty juxtaposition
-	---- operator on strategy lists, with nilSTL the identity element.
-	subsort Strategy < StrategyList .
-	op nilSTL : -> StrategyList [ctor] .
-	op __ : StrategyList StrategyList -> StrategyList [ctor assoc id: nilSTL] .
+	sort StrategySet .
+	subsort Strategy < StrategySet .
 
-	---- Defined operations 
-	vars N I : Nat . 
-	vars SKL : SkipList .
-	vars STL : StrategyList .
-
-	---- enumStrategies(N):
-	----    N: a natural number 
-	----    Result: a list of all possible strategies of length NatList
-	----            with all their scores initialized to 0.
-	----    e.g.: enumStrategies(2) = 
-	----                  [0 : false . false] 
-	----                  [0 : false . true] 
-	----                  [0 : true . false] 
-	----                  [0 : true . true]
-	----
-	op enumStrategies : Nat -> [StrategyList] .
-	eq enumStrategies(0) = [0 : nilSKL] .
-	eq enumStrategies(s(N)) = augment(enumStrategies(N)) .
-	---- A helper fucntion to enumStrategies(N)
-	op augment : StrategyList -> [StrategyList] .
-	eq augment(nilSTL) = nilSTL .
-	eq augment([I : SKL] STL) = [I : SKL . false] [I : SKL . true] augment(STL) .
+	---- op mtSTS : -> StrategySet .
+	op __ : StrategySet StrategySet -> StrategySet [assoc comm] .
 endm
+
 
 ***(
 *** Actor Names
@@ -387,7 +396,7 @@ endm
 ***   bc   : the blockchain actor (modeling the state of the protocol)
 ***   r    : the RANDAO contract actor 
 ***   a    : the attacker actor 
-***   vg   : the validator generator actor (for modeling a dynamic validator set)
+***   g   : the validator generator actor (for modeling a dynamic validator set)
 *** 
 *** We note that, for execution efficincy, a validator actor v(I) is not  
 *** represented by its own actor object, but rather by its validator records
@@ -399,7 +408,7 @@ mod OBJECTS is
     op bc :     -> ActorName .   --- Blockchain 
     op r  :     -> ActorName .   --- RANDAO Contract
     op a  :     -> ActorName .   --- Attacker
-    op vg :     -> ActorName .   --- Validator Generator
+    op g :     -> ActorName .   --- Validator Generator
 endm
 
 ***(
@@ -417,8 +426,8 @@ endm
 ***			seed:           S,  	---- seed of previous game round
 ***			vpending:       VHL,    ---- list of records of pending validators 
 ***			vpending-size:  N,      ---- their count
-***			vappr:          VHL',   ---- list of records of approved validators  
-***			vappr-size:     N'      ---- their count
+***			vapproved:          VHL',   ---- list of records of approved validators  
+***			vapproved-size:     N'      ---- their count
 ***		> .
 ***
 *** RANDAO Contract:
@@ -426,7 +435,7 @@ endm
 ***			status:         U,      ---- status can be 'ready' or 'processing' 
 ***			balance:        N,      ---- current contract balance 
 ***			success-rounds: J,      ---- number of successful rounds
-***			proposers:      PL, 	---- proposers participating in the current game round
+***			precords:      PL, 	---- proposers participating in the current game round
 ***			prop-size:      M,      ---- their count (in the steady state, this must be equal to #CYCLE-LENGTH)
 ***			prop-ilist: 	IL, 	---- their indices,       
 ***			pnext:          I       ---- next validator (time slot) to process
@@ -435,22 +444,22 @@ endm
 *** Attacker:
 *** 	<name: a |					---- the Attacker Object
 ***			vcomp:			CVL,	---- private validator records
-***			vcomp-ilist:	IL,		---- a list of the compromized validator indices
+***			vcomp-ilist:	IL,		---- a list of the compromised validator indices
 ***			vcomp-size:		N,      ---- the size of IL
-***			strategy:		ST		---- the attacker's strategy (for tails controlled by the attacker)
+***			strategy:		G		---- the attacker's strategy (for tails controlled by the attacker)
 ***		> .	
 ***
 ***	Validator Generator: 
-***		<name: vg | 				---- the validator generator 
+***		<name: g | 				---- the validator generator 
 ***			vcount: N, 				---- the index of the next validator to be generated 
 ***			contract: RID,			---- the name of the RANDAO contract 
 ***			next-seed: S,			---- the seed of the next validator to be generated
-***			next-comp: B > .		---- a Boolean indicating whether the next validator is compromized or not 
+***			next-comp: B > .		---- a Boolean indicating whether the next validator is compromised or not 
 ***
 )
 mod ATTRIBUTES is
     protecting VRECORD .
-    protecting PROPOSERS .
+    protecting PRECORDS .
     protecting NATLIST .
     protecting STRATEGY .
 
@@ -462,11 +471,11 @@ mod ATTRIBUTES is
     op status:_         : Status		-> Attribute [format (m o d)] .  
     op balance:_        : Nat			-> Attribute [format (m o d)] .  
     op seed:_           : Seed			-> Attribute [format (m o d)] .
-    op vappr:_          : VRecordList 	-> Attribute [format (m o d)] .
-    op vappr-size:_     : Nat			-> Attribute [format (m o d)] .
+    op vapproved:_      : VRecordList 	-> Attribute [format (m o d)] .
+    op vapproved-size:_ : Nat			-> Attribute [format (m o d)] .
     op vpending:_       : VRecordList	-> Attribute [format (m o d)] .
     op vpending-size:_  : Nat			-> Attribute [format (m o d)] .
-    op proposers:_      : ProposerList	-> Attribute [format (m o d)] .
+    op precords:_       : PRecordList	-> Attribute [format (m o d)] .
     op prop-ilist:_     : NatList		-> Attribute [format (m o d)] .
     op prop-size:_      : Nat			-> Attribute [format (m o d)] .
     op pnext:_          : Nat 			-> Attribute [format (m o d)] .
@@ -476,7 +485,7 @@ mod ATTRIBUTES is
     op vcomp:_ 			: CVRecordList	-> Attribute [format (m o d)] .
     op vcomp-ilist:_ 	: NatList 		-> Attribute [format (m o d)] .
     op vcomp-size:_     : Nat			-> Attribute [format (m o d)] .
-    op strategy:_ 		: Strategy 		-> Attribute [format (m o d)] .
+    op strategy:_ 		: Nat 			-> Attribute [format (m o d)] .
     op vcount:_ 		: Nat 			-> Attribute [format (m o d)] .
     op next-comp:_ 		: Bool 			-> Attribute [format (m o d)] .
 endm
@@ -494,7 +503,7 @@ endm
 ---- Message contents
 mod MESSAGES is
     protecting VRECORD .
-    protecting PROPOSERS .
+    protecting PRECORDS .
    	extending APMAUDE .
 
 	---- Message Contents:
@@ -511,13 +520,11 @@ mod MESSAGES is
 	---- (used in self-addressed messages) 
 	op  nextRound 	:   					-> Content . 
  
-	---- doReveal(K): schedule a possible reveal action at slot K 
+	---- doReveal(X, K): schedule a possible reveal action at slot K 
+	---- 				where X is 0 for an honest validator and 1 
+	---- 				for a compromised validator
 	---- (used in self-addressed messages) 
-	op  doReveal	: Nat					-> Content . 
-
-	--- doReveal*() : schedule the second step of the reveal action 
-	---- (used in self-addressed messages) 
-	op  doReveal*	:				 		-> Content . 
+	op  doReveal	: Nat Nat					-> Content . 
 
 	--- spawn() : schedule arrival of the next validator to the system 
 	---- (used in self-addressed messages when dynamic validators are 
@@ -570,30 +577,49 @@ mod RANDAO-BEHAVIOR is
 	protecting CONFIG .
 	protecting PARAMS .
 
-	vars S S' RS 					: Seed .
+	vars S S' S'' RS 				: Seed .
 	vars AS AS' AS'' 				: AttributeSet . 
 	vars T TG TS TS' TR TR' D R F 	: Float .
 	vars SL SL' 					: ScheduleList . 
 	vars ST ST' 					: Strategy .
-	vars SSTL STL STL' 				: StrategyList .
+	vars SSTS STS STS' 				: StrategySet .
 	vars CID VID RID OID AID BID 	: ActorName .
   	vars H H' 						: Hash .
-	vars I J K L M N N' 			: Nat .
-	vars VHL VHL' : VRecordList .
-	vars CVL CVL' : CVRecordList .
-	vars CL : ProposerList .
-	vars C : Content .
-	vars B B' T? : Bool .
-	vars IL : NatList .
-	vars X : Int .
-	vars RO : Role .
-	vars SKL SKL' : SkipList .
-	vars CRS : CRoleSet . 
-	vars SDL : NatList .
+	vars I J K L M M' N N' G G'     : Nat .
+	vars VHL VHL'                   : VRecordList .
+	vars CVL CVL'                   : CVRecordList .
+	vars CL                         : PRecordList .
+	vars B B' T?                    : Bool .
+	vars IL IL' IL1 IL1' IL2 IL2'   : NatList .
+	vars X                          : Int .
+	vars RO                         : Role .
+	vars CRS                        : CRoleSet . 
+	vars SDL                        : NatList .
+	vars IS                         : NatSet .
 
 	****************************************
 	**** Some Operations Needed by the Rules
 	**************************************** 
+
+	---- i*(IL, IL'): 
+	----	IL: A nat list (list of proposer indices)
+	----	IL': A nat list (list of attacker indices)
+	---- 	Result: A list of private validator records corresponding for 
+	----    		attacker validators appearing in IL 
+	----
+	---- e.g. makeCVL*( 0 . 1 . 2 . 3,  0 . 2 . 4) may rewrite to
+	---- 		< v(0), 2156527062, mtCRS > ; 
+	---- 		< v(2), 3212733452, mtCRS >
+	---- 
+	op makeCVL : NatList NatList -> [CVRecordList] .
+	eq makeCVL(IL, IL') = makeCVL*(toNatSet(IL), IL') .
+
+	op makeCVL* : NatSet NatList -> [CVRecordList] .
+	eq makeCVL*(mtIS, IL') = nilCVL .
+	eq makeCVL*((I , IS), (IL1 . I . IL1')) 
+		=  makeCVL*(IS, (IL1 . I . IL1')) ; < v(I), mtCRS > .
+    eq makeCVL*((I , IS), IL')
+		=  makeCVL*(IS, IL') [owise] .
 
 	---- updateRewards(VHL, CL) 
 	----    VHL: list of validator records 
@@ -608,24 +634,23 @@ mod RANDAO-BEHAVIOR is
 	---- e.g. updateRewards(< v(0) , H , 10 >, [v(0) , true])  = < v(0) , H , 12 >
 	---- e.g. updateRewards(< v(0) , H , 10 >, [v(0) , false]) = < v(0) , H , 10 >
 	----
-    op updateRewards : VRecordList ProposerList -> [VRecordList] .
+    op updateRewards : VRecordList PRecordList -> [VRecordList] .
     eq updateRewards(VHL, nilPL) 
     	= VHL . 
-    eq updateRewards((VHL ; < v(I) , H , X > ; VHL'), [ v(I) , B' ] ; CL) 
-    	= updateRewards((VHL ; < v(I) , H , (if B' then X + 2 else X fi) > ; VHL'), CL) .
+    eq updateRewards((VHL ; < v(I), S, H, S', X > ; VHL'), [ v(I) , B' ] ; CL) 
+    	= updateRewards((VHL ; < v(I), S, H, S', (if B' then X + 2 else X fi) > ; VHL'), CL) .
 
-	---- formProposers(VHL, IL) 
-	----    VHL: list of (public) validator records 
+	---- makePropRecords(IL) 
 	----    IL: list of proposer indices 
 	----    Result: The list of proposer records corresponding to IL, where 
 	----            the reveal status is initialized to false.
 	----
-	---- e.g. formProposers(< v(0), H, 0 > ; < v(1), H', 10 >, (1 . 0)) 
+	---- e.g. makePropRecords(1 . 0)
 	----         = [v(1) , false] ; [v(0), false]
 	----
-    op formProposers : VRecordList NatList -> [ProposerList] .
-    eq formProposers(VHL, nilIL) = nilPL . 
-    eq formProposers((VHL ; < v(I) , H , X > ; VHL'), (I . IL)) = [ v(I) , false ] ; formProposers((VHL ; < v(I), H , X > ; VHL'), IL) .
+    op makePropRecords : NatList -> [PRecordList] .
+    eq makePropRecords(nilIL) = nilPL . 
+    eq makePropRecords(I . IL) = [ v(I) , false ] ; makePropRecords(IL) .
 
     ---- setNewCVRoles(CVL, IL)
     ----	CVL: list of (private) validator records 
@@ -643,75 +668,68 @@ mod RANDAO-BEHAVIOR is
     ----		  = < v(0), S0, S0', honest > ; 
     ----            < v(1), S1, S1', [1 : isolated], [3 : ctailhead(S1 . S1)],[4 : ctailtail] >
     ----
-    op setNewCVRoles : CVRecordList NatList -> [CVRecordList] .
-    eq setNewCVRoles(CVL, IL) = setNewCVRoles*(resetRoles(CVL), IL, #CYCLE-LENGTH, true, nilIL) .
-
-    ---- resetRoles(CVL)
-    ----	CVL: list of (private) validator records 
-    ----    Result: The same list CVL with all attacker roles reset to mtCRS 
-    ---- This is a helper function to setNewCVRoles(CVL, IL)
-    ----
-    op resetRoles : CVRecordList -> [CVRecordList] .
-    eq resetRoles(CVL ; < v(I) , S, S', CRS > ; CVL') 
-    	= resetRoles(CVL) ; < v(I) , S, S', mtCRS > ; resetRoles(CVL') .
-    eq resetRoles(CVL) 
-    	= CVL [owise] .
+    op setNewCVRoles : CVRecordList NatList VRecordList -> [CVRecordList] .
+    eq setNewCVRoles(CVL, IL, VHL) = setNewCVRoles*(CVL, IL, VHL, #CYCLE-LENGTH, true, nilIL) .
 
     ---- setNewCVRoles*(CVL, IL, N, B, SDL)
     ----	CVL: list of (private) validator records 
     ----	IL: list of proposer indices 
     ----	N: A natural number (the remaining records in the proposers list) 
     ----	B: A Boolean indicating whether an honest validator has been seen so far
-    ---- 	SDL: The list of seeds of the compromized tail of IL collected so far     
+    ---- 	SDL: The list of seeds of the compromised tail of IL collected so far     
     ----    Result: The list of (private) validator records CVL in which 
     ----			the roles of the validators appearing in IL are appropriately
     ----            set according to the validator type and position in IL  
     ---- This is a helper function to setNewCVRoles(CVL, IL)
     ----
-    op setNewCVRoles* : CVRecordList NatList Nat Bool NatList -> [CVRecordList] .
-    eq setNewCVRoles*(CVL, nilIL, N, B, SDL) 
+    op setNewCVRoles* : CVRecordList NatList VRecordList Nat Bool NatList -> [CVRecordList] .
+    eq setNewCVRoles*(CVL, nilIL, VHL, N, B, SDL) 
     	=  CVL . 
-    eq setNewCVRoles*((CVL ; < v(I) , S, S', honest > ; CVL'), (IL . I), s(N), T?, SDL) 
-    	= setNewCVRoles*((CVL ; < v(I) , S, S', honest > ; CVL'), IL, N, false, SDL) .
-    eq setNewCVRoles*((CVL ; < v(I) , S, S', CRS > ; CVL'), (IL . I), s(N), false, SDL) 
-    	= setNewCVRoles*((CVL ; < v(I) , S, S', (CRS , [s(N) : isolated]) > ; CVL'), IL, N, false, SDL) .
-   ceq setNewCVRoles*((CVL ; < v(I) , S, S', CRS > ; CVL'), (IL . I), s(N), true, SDL) 
+    eq setNewCVRoles*((CVL ; < v(I) , CRS > ; CVL'), (IL . I), VHL, s(N), false, SDL) 
+    	= setNewCVRoles*((CVL ; < v(I) , (CRS , [s(N) : isolated]) > ; CVL'), IL, VHL, N, false, SDL) .
+   ceq setNewCVRoles*((CVL ; < v(I) , CRS > ; CVL'), (IL . I), (VHL ; < v(I), S, H, S', X > ; VHL'),  s(N), true, SDL) 
     	= if B then 
-    		setNewCVRoles*((CVL ; < v(I) , S, S', (CRS , [s(N) : ctailtail]) > ; CVL'), IL, N, true, (S . SDL)) 
+    		setNewCVRoles*((CVL ; < v(I) , (CRS , [s(N) : ctailtail]) > ; CVL'), IL, (VHL ; < v(I), S, H, S', X > ; VHL'),  N, true, (S . SDL)) 
     	  else
-    		setNewCVRoles*((CVL ; < v(I) , S, S', (CRS , [s(N) : ctailhead(S . SDL)]) > ; CVL'), IL, N, true, (S . SDL)) 
+    		setNewCVRoles*((CVL ; < v(I) , (CRS , [s(N) : ctailhead(S . SDL)]) > ; CVL'), IL, (VHL ; < v(I), S, H, S', X > ; VHL'),  N, true, (S . SDL)) 
     	  fi
-    	if B := isCEnd?((CVL ; < v(I) , S, S', CRS > ; CVL'), IL) .
+    	if B := compEnd?((CVL ; < v(I) , CRS > ; CVL'), IL) .
+    eq setNewCVRoles*(CVL, (IL . I), VHL, s(N), T?, SDL) = setNewCVRoles*(CVL, IL, VHL, N, false, SDL) [owise] .
 
-    ---- isCEnd?(CVL, IL)
+    ---- compEnd?(CVL, IL)
     ----	CVL: list of (private) validator records 
     ----    IL : list of proposer indices
-    ----    Result: A Boolean indicating whether the end of IL is compromized
+    ----    Result: A Boolean indicating whether the end of IL is compromised
     ---- This is a helper function to setNewCVRoles(CVL, IL)
     ---- 
-    op isCEnd? : CVRecordList NatList -> [Bool] .
-    eq isCEnd?(CVL, nilIL) = false .
-    eq isCEnd?((CVL ; < v(I) , S, S', honest > ; CVL'), (IL . I)) = false .
-    eq isCEnd?((CVL ; < v(I) , S, S', CRS > ; CVL'), (IL . I)) = true .
+    op compEnd? : CVRecordList NatList -> [Bool] .
+    eq compEnd?((CVL ; < v(I) , CRS > ; CVL'), (IL . I)) = true .
+    eq compEnd?(CVL, IL) = false [owise] .
 
-    ---- createDoReveals(F, A, N, IL)
+    ---- createDoReveals(F, A, N, IL, IL')
     ----	F: the global time value 
     ---- 	A: the RANDAO contract actor name (not really used in this version)
     ----    N : a counter representing the number of messages created so far 
-    ----    IL: list of validator indicies 
+    ----    IL: list of validator indices (target validators)
+    ----    IL': list of compromised validator indices
     ----    Result: A list of scheduled doReveal messages targeted at validators  
     ---- 			in IL with base time value TG 
     ---- 
-    ---- e.g. createDoReveals(0.0, r, 3, (2 . 5 . 7)) may rewrite to:
-    ---- 			[0.0260136714847790, v(2) <- doReveal(1), 0] ; 
-    ----            [1.0773220517922477, v(5) <- doReveal(2), 0] ; 
-    ----            [2.0658048222786292, v(7) <- doReveal(3), 0]
+    ---- e.g. createDoReveals(0.0, r, 3, (2 . 5 . 7), (2 . 7)) may rewrite to:
+    ---- 			[0.0260136714847790, v(2) <- doReveal(1, 1), 0] ; 
+    ----            [1.0773220517922477, v(5) <- doReveal(0, 2), 0] ; 
+    ----            [2.0658048222786292, v(7) <- doReveal(1, 3), 0]
     ----      
-    op createDoReveals : Float ActorName Nat NatList -> [ScheduleList] .
-    eq createDoReveals(TG, RID, N, nilIL) = nil .
-    eq createDoReveals(TG, RID, N, I . IL) = [TG + float(N) + #TRANSMISSION-DELAY, (v(I) <- doReveal(s(N))), #MSG-DROP-PROB] ; createDoReveals(TG, RID, s(N), IL) .
+    op createDoReveals : Float ActorName Nat NatList NatList -> [ScheduleList] .
+    eq createDoReveals(TG, RID, N, nilIL, IL') = nil .
+    eq createDoReveals(TG, RID, N, I . IL, (IL1 . I . IL1')) = [TG + float(N) + #TRANSMISSION-DELAY, (v(I) <- doReveal(1, s(N))), #MSG-DROP-PROB] ; createDoReveals(TG, RID, s(N), IL, (IL1 . I . IL1')) .
+    eq createDoReveals(TG, RID, N, I . IL, IL') = [TG + float(N) + #TRANSMISSION-DELAY, (v(I) <- doReveal(0, s(N))), #MSG-DROP-PROB] ; createDoReveals(TG, RID, s(N), IL, IL') [owise] .
 
-
+    op allCompromised? : NatList NatList -> [Bool] .
+    eq allCompromised?(nilIL, IL) = true .
+    eq allCompromised?(I . IL, IL1 . I . IL2) 
+    	= allCompromised?(IL, IL1 . I . IL2) .
+    eq allCompromised?(IL, IL') = false [owise] .
 	****************************************
 	**** The Rules
 	**************************************** 
@@ -742,12 +760,12 @@ mod RANDAO-BEHAVIOR is
  	limit(true, D)
  	<name: BID |		
 			seed:           S, 
-			vappr-size:     N,
+			vapproved-size:     N,
 			vpending-size:	N',
 			AS >
  	<name: RID |		
 			status:	ready, 
-			proposers:	([ VID , B ] ; CL),
+			precords:	([ VID , B ] ; CL),
 			prop-ilist: IL,       
 			pnext:	K,
 			AS' >
@@ -756,15 +774,15 @@ mod RANDAO-BEHAVIOR is
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
     	<name: BID |		
 				seed:           S, 
-				vappr-size:     N,
+				vapproved-size:     N,
 				vpending-size:	N',
 				AS >
     	if L > #CYCLE-LENGTH then
     		---- End of game round: prepare to advance to the next round 
  			<name: RID |		
 					status:	processing, 
-					proposers:	([ VID , B ] ; CL),       
-					prop-ilist: computeNewNatList(N + N', #CYCLE-LENGTH, S),       
+					precords:	([ VID , B ] ; CL),       
+					prop-ilist: sampleIndexList(N + N', #CYCLE-LENGTH, S),       
 					pnext:	1,
 					AS' >
     		{ TG | SL }
@@ -774,7 +792,7 @@ mod RANDAO-BEHAVIOR is
     			---- Slot was already advanced by a valid reveal -- so no changes 
  				<name: RID |		
 						status:	ready, 
-						proposers:	([ VID , B ] ; CL),       
+						precords:	([ VID , B ] ; CL),       
 						prop-ilist: IL,       
 						pnext:	K,
 						AS' >
@@ -782,7 +800,7 @@ mod RANDAO-BEHAVIOR is
 				---- Slot was not advanced -- advance it and record failure of a reveal
  				<name: RID |		
 						status:	ready, 
-						proposers:	(CL ; [ VID , false ]),       
+						precords:	(CL ; [ VID , false ]),       
 						prop-ilist: IL,       
 						pnext:	s(K),
 						AS' >
@@ -794,16 +812,16 @@ mod RANDAO-BEHAVIOR is
     ---- RAdvanceRound: Advance the process to the next round 
     ---- This rule processes a 'nextRound' message. Several steps are taken in this 
     ---- transition:
-    ---- 1. The (public) validator records VHL are updated to reward those who have 
+    ---- 1. The (general) validator records VHL are updated to reward those who have 
     ----    successfully reveled their seeds in the last round (with updateRewards).
     ---- 2. The pending validators list VHL' is incorporated into the approved list
     ----    in preparation for their participation in the next round and the list 
     ----    sizes are updated accordingly.
     ---- 3. Given the freshly sampled list of proposer indices IL, the list (private)
-    ----    validator records for the compromized validators are updated with 
+    ----    validator records for the compromised validators are updated with 
     ----    potentially new attacker roles (with setNewCVRoles).  
     ---- 4. Given the freshly sampled list of proposer indices IL, a new proposers
-    ----    list is created and initialized (with formProposers) 
+    ----    list is created and initialized (with makePropRecords) 
     ---- 5. A new list of 'doReveal' messages is created and inserted into the 
     ----    scheduler, along with a 'nextSlot' message to resume advacning rounds.
     ----
@@ -811,46 +829,53 @@ mod RANDAO-BEHAVIOR is
  	limit(true, D)
  	round(R)
  	<name: BID |		
-			vappr:          VHL,
-			vappr-size:		N,
+			vapproved:          VHL,
+			vapproved-size:		N,
 			vpending:		VHL',
 			vpending-size:	N', 
 			AS >
 	<name: a   |
 			vcomp: 			CVL,
+			vcomp-ilist:	IL',
 			AS' >
  	<name: RID |		
 			status:			processing, 
 			balance: 		J,
 			success-rounds: I, 
-			proposers:      CL,
+			precords:      CL,
 			prop-ilist:		IL, 
 			prop-size:     	M,
 			pnext:          K,
 			AS'' >
     { TG | SL }
     (RID <- nextRound)
-    =>  limit(TG <= #SIM-TIME-LIMIT * D, D)
-    	round(R + 1.0)
+    =>  round(R + 1.0)
 	 	<name: BID |		
-				vappr:          (updateRewards(VHL, CL) ; VHL'), 
-				vappr-size:		(N + N'),
+				vapproved:          (updateRewards(VHL, CL) ; VHL'), 
+				vapproved-size:		(N + N'),
 				vpending:		nilVHL,
 				vpending-size:	0, 
 				AS >
 		<name: a   |
-				vcomp: 			setNewCVRoles(CVL, IL),
+				vcomp: 			setNewCVRoles(makeCVL(IL, IL'), IL, (VHL ; VHL')),
+				vcomp-ilist:	IL',
 				AS' >
  		<name: RID |		
 				status:			ready, 
 				balance: 		J,
 				success-rounds: s(I), 
-				proposers:      formProposers(VHL ; VHL', IL),
+				precords:      makePropRecords(IL),
 				prop-ilist:		IL, 
 				prop-size:     	M,
 				pnext:          1,
 				AS'' >
-		mytick(insertList(insert({ TG | SL }, [floor(TG) + 1.0, (RID <- nextSlot(2)), 0]), createDoReveals(TG, RID, 0, IL))) 
+		if allCompromised?(IL,  IL') then 
+    		limit(false, D)
+    		{ TG | SL }
+    	else
+    		limit(TG <= #SIM-TIME-LIMIT * D, D)
+    		mytick(insertList(insert({ TG | SL }, [floor(TG) + 1.0, (RID <- nextSlot(2)), 0]), createDoReveals(TG, RID, 0, IL, IL'))) 
+    	fi
     	[print TG ": RAdvanceRound with new committee " IL] .
 
 
@@ -870,36 +895,36 @@ mod RANDAO-BEHAVIOR is
  	limit(true, D)
  	<name: BID |		
 			seed:	RS,  
-			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+			vapproved:	(VHL ; < VID, S, H, S', X > ; VHL') ,   
 			AS >
  	<name: RID |		
 			status:	ready, 
-			proposers:	([ VID , B ] ; CL),       
+			precords:	([ VID , B ] ; CL),       
 			pnext:	J,
 			AS' >
     { TG | SL }
-    (RID <- reveal(VID, S, H'))
+    (RID <- reveal(VID, S'', H'))
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
-    	if (H == h(S)) then 
+    	if (H == h(S'')) then 
     		---- The reveal is successful
 		 	<name: BID |		
 					seed:	combineSeeds(RS, S),  
-					vappr:	(VHL ; < VID, H' , X > ; VHL') ,   
+					vapproved:	(VHL ; < VID, S, H', S', X > ; VHL') ,   
 					AS >
  			<name: RID |		
 					status:	ready, 
-					proposers:	(CL ; [ VID , true ]),       
+					precords:	(CL ; [ VID , true ]),       
 					pnext:	s(J),
 					AS' >
 		else
     		---- The reveal failed
 		 	<name: BID |		
 					seed:	RS,  
-					vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+					vapproved:	(VHL ; < VID, S, H, S', X > ; VHL') ,   
 					AS >
  			<name: RID |		
 					status:	ready, 
-					proposers:	(CL ; [ VID , false ]),       
+					precords:	(CL ; [ VID , false ]),       
 					pnext:	J,
 					AS' >
 		fi 
@@ -910,15 +935,15 @@ endm
 ***(
 *** Validator Actions
 ***
-*** This module defines how the validators (both honest and compromized) behave. 
+*** This module defines how the validators (both honest and compromised) behave. 
 *** There are essentially two validator actions, which we specify here using a 
 *** total of 5 rules to maintain clarity of presentation (2 rules would 
 *** technically be sufficient, but would result in structurally complicated rules).
 *** 1. Revealing a seed: specified by 
 ***		- VHonestReveal: for honest validators
-***     - VCompReveal1: for compromized validators with role 'isolated'
-*** 	- VCompReveal2: for compromized validators with role 'ctailtail'
-*** 	- VCompReveal3: for compromized validators with role 'ctailhead'
+***     - VCompReveal1: for compromised validators with role 'isolated'
+*** 	- VCompReveal2: for compromised validators with role 'ctailtail'
+*** 	- VCompReveal3: for compromised validators with role 'ctailhead'
 *** 2. Arriving to the system: specified by 
 ***		- VArrive
 ***
@@ -933,105 +958,63 @@ mod VALIDATOR-BEHAVIOR is
 	vars SL SL' : ScheduleList . 
 	vars CID VID RID OID AID BID VGID : ActorName .
   	vars H : Hash .
-	vars I J K L M M' N N' : Nat .
+	vars I J K L M M' N N' G G' C C' : Nat .
 	vars VHL VHL' : VRecordList .
 	vars CVL CVL' : CVRecordList .
-	vars CL : ProposerList .
-	vars C : Content .
+	vars CL : PRecordList .
 	vars B : Bool .
-	vars IL : NatList .
+	vars IL IL' IL1 IL1' : NatList .
 	vars X : Int .
 	vars RO : Role .
 	vars CRS : CRoleSet . 
 	vars ST ST' : Strategy .
-	vars SSTL STL STL' : StrategyList .
+	vars SSTS STS STS' : StrategySet .
 	vars CP : CPosition .
-	vars SKL SKL' : SkipList .
 	vars SDL : NatList .
 
 	****************************************
 	**** Some Operations Needed by the Rules
 	**************************************** 
 
-	---- preComputeSeed(RS, SDL, SKL)
-	---- 	RS: the starting seed
-	----	SDL: a list of seeds
-	---- 	SKL: a skip list (a list of Boolean values indicating whether to reveal 
-	----		 or skip at each slot)
-	---- 	Result: The seed that would be computed by RANDAO if the seeds in SDL 
-	----  			and the skips in SKL are used
-	----
-	---- e.g. preComputeSeed(8479, 487734 . 93478 . 4931, true . false . true) = 476010
-	----
-	op preComputeSeed : Seed NatList SkipList -> [Seed] .
-	eq preComputeSeed(RS, SDL, nilSKL) = RS .
-	eq preComputeSeed(RS, (S . SDL), (B . SKL))
-		= preComputeSeed(if B then combineSeeds(RS, S) else RS fi, SDL, SKL) .	
-	
-	---- computeAllScores(IL, STL, RS, SDL, N, M) 
-	----    IL: list of all compromized validator indicies 
-	----    STL: list of attack strategies for which scores are to be computed
-	----  	RS: The RANDAO-computed seed
-	----    SDL: the list of (compromized) validator seeds
-	----  	N: the total number of validators in the system
-	----   	M: the number of proposers (#CYCLE-LENGTH) 
-	----    Result: The strategy list STL in which each strategy is assigned
-	----            a score 
-	---- Note 1: Scoring is based on the scoring function specified by #SCORE-FUNCTION
-	----
-	---- e.g. computeAllScores(
-	---- 		1 . 3 . 5 . 7 . 9, 
-	----		[0 : true . false . true] [0 : true . false . false], 
-	----        8479, 
-	----        487734 . 93478 . 4931, 
-	----        15, 
-	----        4) .
-	---- may rewrite to: 
-	----		[0 : true . false . true] [2 : true . false . false]
-	----
-	op computeAllScores : NatList StrategyList Seed NatList Nat Nat -> [StrategyList] .
-	eq computeAllScores(IL, nilSTL, RS, SDL, N, M) = nilSTL .
-	eq computeAllScores(IL, (ST STL), RS, SDL, N, M) 
-		= computeScore(IL, ST, RS, SDL, N, M) computeAllScores(IL, STL, RS, SDL, N, M) .
+	---- (K, RS, SDL) => K: current tree height, RS: current seed, SDL: remaining seed list 
 
-	--- computeScore(IL, ST, RS, SDL, N, M)
-	--- Similar to above, except that it computes the score of exactly one strategy ST.
-	--- It is called by computeAllScores on each ST in the list of strategies STL. This 
-	--- is a helper function to computeAllScores. It uses both preComputeSeed and 
-	--- computeScoreFunction.
-	op computeScore : NatList Strategy Seed NatList Nat Nat -> [Strategy] .
-	ceq computeScore(IL, [I : B . SKL], RS, SDL, N, M) 
-		= [K : B . SKL]
-		if  PS := preComputeSeed(RS, SDL, B . SKL)
- 		/\	K := computeScoreFunction(
-					#SCORE-FUNCTION,
-					computeNewNatList(N, M, PS), 
-					IL) . 
+	op createStratSet : Nat Seed NatList -> [StrategySet] .
+	--- eq createStratSet(0, RS, S) = [0 : RS] .
+	eq createStratSet(s(K), RS, S) = [0 : RS] [1 : combineSeeds(RS, S)] .
 
-	---- findMaxScoreStrat(STL)
-	---- 	STL: A list of strategies (with scores)
-	---- 	Result: Returns the (first) strategy having the maximum score 
-	----
-	---- e.g. findMaxScoreStrat(
-	----			[1 : true . false]  
-	---- 			[3 : false . true] 
-	---- 			[2 : false . false]) 
-	----		= [3 : false . true] 
-	---- 
-	op findMaxScoreStrat : StrategyList -> [Strategy] .
-	eq findMaxScoreStrat(ST STL) = findMaxScoreStrat*(STL, ST) .
+	ceq createStratSet(s(s(K)), RS, (SDL . S))
+		= STS augment1(STS, S, s(K))
+		if STS := createStratSet(s(K), RS, SDL) .
 
-	---- findMaxScoreStrat*(STL, ST)
-	---- A helper function to findMaxScoreStrat that maintains the (first found)
-	---- maximum-score strategy as an argument (tail-recursive function) 
-	op findMaxScoreStrat* : StrategyList Strategy -> [Strategy] .
-	eq findMaxScoreStrat*(nilSTL, ST) = ST .
-	eq findMaxScoreStrat*([I : SKL] STL, [K : SKL']) 
-		= if I > K then 
-			findMaxScoreStrat*(STL, [I : SKL])
+	op augment1 : StrategySet Seed Nat -> [StrategySet] .
+	--- eq augment1(mtSTS) = [1 : RS] .
+	eq augment1([G : RS], S, K) 	= [2 ^ K + G : combineSeeds(RS, S)] .
+	eq augment1([G : RS] STS, S, K) = [2 ^ K + G : combineSeeds(RS, S)] augment1(STS, S, K) .
+
+	 op computeScore : Seed Nat Nat NatList -> [Nat] .
+	 eq computeScore(S, N, M, IL) 
+	 	= computeScoreFunction(
+					#SCORE-FUNCTION, 
+					sampleIndexList(N, M, S),
+					IL) .
+
+	op findMaxScoreStrat : StrategySet Nat Nat NatList -> [Nat] .
+	eq findMaxScoreStrat([G : S], N, M, IL) =  G .
+	eq findMaxScoreStrat([G : S] STS, N, M, IL) 
+	  = findMaxScoreStrat*(STS, G, computeScore(S, N, M, IL), N, M, IL) .
+
+
+	op findMaxScoreStrat* : StrategySet Nat Nat Nat Nat NatList -> [Nat] .
+	eq findMaxScoreStrat*([G : S], G', C', N, M, IL) 
+		= if computeScore(S, N, M, IL) > C' then G else G' fi .
+	ceq findMaxScoreStrat*([G : S] STS, G', C', N, M, IL) 
+		= if C > C' then 
+			findMaxScoreStrat*(STS, G, C, N, M, IL)
 		  else 
-			findMaxScoreStrat*(STL, [K : SKL'])
-		  fi .
+			findMaxScoreStrat*(STS, G', C', N, M, IL)
+		  fi 
+		if C := computeScore(S, N, M, IL) .
+
 
 
 	****************************************
@@ -1048,30 +1031,22 @@ mod VALIDATOR-BEHAVIOR is
 	----  
   rl [VHonestReveal] : 
     limit(true, D)
-	<name: AID |
-			vcomp:	(CVL ; < VID , S, S', honest > ; CVL'),  
-			vcomp-ilist: IL, 
-			AS >
  	<name: BID |		
-			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+			vapproved:	(VHL ; < VID, S, H, S', X > ; VHL') ,   
 			AS' >    	
     { TG | SL }
-    (VID <- doReveal(K))
+    (VID <- doReveal(0, K))  --- 0 means honest 
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
-		<name: AID |
-				vcomp:	(CVL ; < VID , S', sampleUniWithInt(#MAX-SEED-VALUE), honest > ; CVL'),  
-				vcomp-ilist: IL, 
-				AS >
  		<name: BID |		
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+				vapproved:	(VHL ; < VID, S', H, sampleUniWithInt(#MAX-SEED-VALUE), X > ; VHL') ,   
 				AS' >    	
 			mytick(insert( { TG | SL }, [ TG + #TRANSMISSION-DELAY, (r <- reveal(VID, S, h(S'))) , #MSG-DROP-PROB] ))
 	[print TG ": VReveal by " VID] .
 
-	---- VCompReveal1: A compromized validator with role "isolated" possibly revealing a seed
+	---- VCompReveal1: A compromised validator with role "isolated" possibly revealing a seed
 	----
-	---- This (conditional) rule models the behavior of a compromized validator with role 
-	---- 'isolated' (a validator that deos not belong to the compromized tail of the proposers 
+	---- This (conditional) rule models the behavior of a compromised validator with role 
+	---- 'isolated' (a validator that deos not belong to the compromised tail of the proposers 
 	---- list. The validator consumes the doReveal message and computes the score of
 	---- revealing the seed using computeScoreFunction. The score is compared with the 
 	---- #MIN-ATTACK-SCORE, the minimum score value deemed acceptable by the attacker.
@@ -1082,106 +1057,52 @@ mod VALIDATOR-BEHAVIOR is
 	---- updates its state and generates a new seed to be used later on.
 	----
 	---- Recall that the score is determined by the score function the attacker is trying to
-	---- optimize for (maximizing the number of the compromized validators or maximizing the
-	---- the number of validators in the compromized tail).
+	---- optimize for (maximizing the number of the compromised validators or maximizing the
+	---- the number of validators in the compromised tail).
  crl [VCompReveal1] : 
     limit(true, D)
  	<name: BID |		
 			seed:	RS,  
-			vappr-size: N,
-			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+			vapproved-size: N,
+			vapproved:	(VHL ; < VID, S, H, S', X > ; VHL') ,   
 			AS >
 	<name: AID |
-			vcomp:	(CVL ; < VID , S, S', ([ K : isolated], CRS) > ; CVL'),  
+			vcomp:	(CVL ; < VID , ([ K : isolated], CRS) > ; CVL'),  
 			vcomp-ilist: IL, 
 			AS' >    
 	{ TG | SL }
-    (VID <- doReveal(K))
+    (VID <- doReveal(1, K))
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
 		if B then 
  		<name: BID |		
 				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S', H, sampleUniWithInt(#MAX-SEED-VALUE), X > ; VHL') ,   
 				AS >
 		<name: AID |
-				vcomp:	(CVL ; < VID , S', sampleUniWithInt(#MAX-SEED-VALUE), ([ K : isolated], CRS) > ; CVL'),  
+				vcomp:	(CVL ; < VID , ([ K : isolated], CRS) > ; CVL'),  
 				vcomp-ilist: IL, 
 				AS' >  
 			mytick(insert( { TG | SL }, [ TG + #TRANSMISSION-DELAY, (r <- reveal(VID, S, h(S'))) , #MSG-DROP-PROB] ))
  		else
  		<name: BID |		
 				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S, H, S', X > ; VHL') ,   
 				AS >
 		<name: AID |
-				vcomp:	(CVL ; < VID , S, S', ([ K : isolated], CRS) > ; CVL'),  
+				vcomp:	(CVL ; < VID , ([ K : isolated], CRS) > ; CVL'),  
 				vcomp-ilist: IL, 
 				AS' >  
 			mytick({ TG | SL })
 	    fi
-		if B := computeScoreFunction(
-					#SCORE-FUNCTION, 
-					computeNewNatList(N, #CYCLE-LENGTH, combineSeeds(RS, S)),
-					IL) >= #MIN-ATTACK-SCORE
+		if B := computeScore(combineSeeds(RS, S), N, #CYCLE-LENGTH, IL) >= computeScore(RS, N, #CYCLE-LENGTH, IL) ---- #MIN-ATTACK-SCORE
 		[print TG ": VCompReveal1 for slot " K " by " VID " => " B] .
 
-	---- VCompReveal2: A compromized validator with role "ctailtail" possibly revealing a seed
+	---- VCompReveal2: A compromised validator with role "ctailhead" possibly revealing a seed
 	----
-	---- This rule models the behavior of a compromized validator with role 'ctailtail' (a 
-	---- compromized validator that belongs to the compromized tail but is not the head of 
-	---- this tail). The validator consumes the doReveal message and then checks whether 
-	---- it should reveal or not according to the precomputed strategy of the attacker. If
-	---- B in the strategy (B . SKL) is true, the validator reveals (schedules a reveal messsage
-	---- as described above). Otherwise, if B is false, the validator remains silent. Other 
-	---- updates to the state are similar to the above rules. 
- rl [VCompReveal2] : 
-    limit(true, D)
- 	<name: BID |		
-			seed:	RS,  
-			vappr-size: N,
-			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
-			AS >    
-	<name: AID |
-			vcomp:	(CVL ; < VID , S, S', ([ K : ctailtail], CRS) > ; CVL'),   
-			strategy: [J : B . SKL],
-			vcomp-ilist: IL, 
-			AS' >    
-	{ TG | SL }
-    (VID <- doReveal(K))
-    => limit(TG <= #SIM-TIME-LIMIT * D, D)
-		if B then 
- 			<name: BID |		
-				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
-				AS >
-			<name: AID |
-				vcomp:	(CVL ; < VID , S', sampleUniWithInt(#MAX-SEED-VALUE), ([ K : ctailtail], CRS) > ; CVL'),  
-				strategy: [J : SKL],
-				vcomp-ilist: IL, 
-				AS' >  
-			mytick(insert( { TG | SL }, [ TG + #TRANSMISSION-DELAY, (r <- reveal(VID, S, h(S'))) , #MSG-DROP-PROB] ))
- 		else
- 			<name: BID |		
-				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
-				AS >
-			<name: AID |
-				vcomp:	(CVL ; < VID , S, S', ([ K : ctailtail], CRS) > ; CVL'),  
-				strategy: [J : SKL],
-				vcomp-ilist: IL, 
-				AS' >  
-			mytick({ TG | SL })
-	    fi
-		[print TG ": VCompReveal2 for slot " K " by " VID " => " B] .	    	
-
-	---- VCompReveal3: A compromized validator with role "ctailhead" possibly revealing a seed
-	----
-	---- This rule models the behavior of a compromized validator with role 'ctailhead' (a 
-	---- compromized validator that is at the head of the compromized tail. The validator  
+	---- This rule models the behavior of a compromised validator with role 'ctailhead' (a 
+	---- compromised validator that is at the head of the compromised tail. The validator  
 	---- consumes the doReveal message and then performs the following steps:
 	----	1. It enumerates all possible attack strategies relevant to its position in the 
 	----	   proposers list (enumStrategies) 
@@ -1193,50 +1114,103 @@ mod VALIDATOR-BEHAVIOR is
 	---- reveals. Otherwise, if B is false, the validator remains silent. Other updates are 
 	---- similar to the above rules. 
 	----
- crl [VCompReveal3] : 
+ crl [VCompReveal2] : 
     limit(true, D)
  	<name: BID |		
 			seed:	RS,  
-			vappr-size: N,
-			vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+			vapproved-size: N,
+			vapproved:	(VHL ; < VID, S, H, S', X >  ; VHL') ,   
 			AS >    
 	<name: AID |
-			vcomp:	(CVL ; < VID , S, S', ([ K : ctailhead(SDL)], CRS) > ; CVL'),   
-			strategy: [J : SKL],
+			vcomp:	(CVL ; < VID , ([ K : ctailhead(SDL)], CRS) > ; CVL'),   
+			strategy: G,
 			vcomp-ilist: IL, 
 			AS' >    
 	{ TG | SL }
-    (VID <- doReveal(K))
+    (VID <- doReveal(1, K))
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
 		if B then 
  			<name: BID |		
 				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S', H, sampleUniWithInt(#MAX-SEED-VALUE), X >  ; VHL') ,   
 				AS >
 			<name: AID |
-				vcomp:	(CVL ; < VID , S', sampleUniWithInt(#MAX-SEED-VALUE), ([ K : ctailhead(SDL)], CRS) > ; CVL'),  
-				strategy: [I : SKL'],
+				vcomp:	(CVL ; < VID , ([ K : ctailhead(SDL)], CRS) > ; CVL'),  
+				strategy: (G' quo 2),
 				vcomp-ilist: IL, 
 				AS' >  
 			mytick(insert( { TG | SL }, [ TG + #TRANSMISSION-DELAY, (r <- reveal(VID, S, h(S'))) , #MSG-DROP-PROB] ))
  		else
  			<name: BID |		
 				seed:	RS,  
-				vappr-size: N,
-				vappr:	(VHL ; < VID, H , X > ; VHL') ,   
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S, H, S', X >  ; VHL') ,   
 				AS >
 			<name: AID |
-				vcomp:	(CVL ; < VID , S, S', ([ K : ctailhead(SDL)], CRS) > ; CVL'),  
-				strategy: [I : SKL'],
+				vcomp:	(CVL ; < VID , ([ K : ctailhead(SDL)], CRS) > ; CVL'),  
+				strategy: (G' quo 2),
 				vcomp-ilist: IL, 
 				AS' >  
 			mytick({ TG | SL })
 	    fi
-	if STL        := enumStrategies(s(#CYCLE-LENGTH - K))
-	/\ SSTL       := computeAllScores(IL, STL, RS, SDL, N, #CYCLE-LENGTH)
-	/\ [I : B . SKL'] := findMaxScoreStrat(SSTL)
-	[print TG ": VCompReveal3 for slot " K " by " VID " with strategy " B " . " SKL'] .	    	
+	if STS      := createStratSet(s(#CYCLE-LENGTH - K), RS, SDL)
+	/\ G'       := findMaxScoreStrat(STS, N, #CYCLE-LENGTH, IL)
+	/\ B := (G' rem 2) == 1
+	[print TG ": VCompReveal2 for slot " K " by " VID " with strategy " B " . " G'] .	
+	    	
+	---- VCompReveal3: A compromised validator with role "ctailtail" possibly revealing a seed
+	----
+	---- This rule models the behavior of a compromised validator with role 'ctailtail' (a 
+	---- compromised validator that belongs to the compromised tail but is not the head of 
+	---- this tail). The validator consumes the doReveal message and then checks whether 
+	---- it should reveal or not according to the precomputed strategy of the attacker. If
+	---- B in the strategy (B . SKL) is true, the validator reveals (schedules a reveal messsage
+	---- as described above). Otherwise, if B is false, the validator remains silent. Other 
+	---- updates to the state are similar to the above rules. 
+ crl [VCompReveal3] : 
+    limit(true, D)
+ 	<name: BID |		
+			seed:	RS,  
+			vapproved-size: N,
+			vapproved:	(VHL ; < VID, S, H, S', X >  ; VHL') ,   
+			AS >    
+	<name: AID |
+			vcomp:	(CVL ; < VID , ([ K : ctailtail], CRS) > ; CVL'),   
+			strategy: G,
+			vcomp-ilist: IL, 
+			AS' >    
+	{ TG | SL }
+    (VID <- doReveal(1, K))
+    => limit(TG <= #SIM-TIME-LIMIT * D, D)
+		if B then 
+ 			<name: BID |		
+				seed:	RS,  
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S', H, sampleUniWithInt(#MAX-SEED-VALUE), X >  ; VHL') ,   
+				AS >
+			<name: AID |
+				vcomp:	(CVL ; < VID , ([ K : ctailtail], CRS) > ; CVL'),  
+				strategy: (G quo 2),
+				vcomp-ilist: IL, 
+				AS' >  
+			mytick(insert( { TG | SL }, [ TG + #TRANSMISSION-DELAY, (r <- reveal(VID, S, h(S'))) , #MSG-DROP-PROB] ))
+ 		else
+ 			<name: BID |		
+				seed:	RS,  
+				vapproved-size: N,
+				vapproved:	(VHL ; < VID, S, H, S', X >  ; VHL') ,   
+				AS >
+			<name: AID |
+				vcomp:	(CVL ; < VID , ([ K : ctailtail], CRS) > ; CVL'),  
+				strategy: (G quo 2),
+				vcomp-ilist: IL, 
+				AS' >  
+			mytick({ TG | SL })
+	    fi
+	    if B := (G rem 2) == 1
+		[print TG ": VCompReveal3 for slot " K " by " VID " => " B] .	    	
+
 
 
 	---- VArrive: A new validator requesting to join the system 
@@ -1245,11 +1219,11 @@ mod VALIDATOR-BEHAVIOR is
 	---- Upon receiving the 'spawn' message, the validator generator creates
 	---- new validator records and adds them to the pending list of validators,
 	---- and the size of pending validators is incremented. If the validator is 
-	---- compromized (controlled by the attacker), the list of (private) 
-	---- validator records is also augmented, and the list of compromized 
+	---- compromised (controlled by the attacker), the list of (private) 
+	---- validator records is also augmented, and the list of compromised 
 	---- validator indices and its size are updated accordingly. In any case, 
 	---- The generator updates its state by preparing the index, seed and the
-	---- compromized state of the next freah validator to be generated, and
+	---- compromised state of the next freah validator to be generated, and
 	---- schedules another 'spawn' message delayed by the validator arrival
 	---- delay.
 	----  
@@ -1260,7 +1234,6 @@ mod VALIDATOR-BEHAVIOR is
 		vpending-size:  M,
 		AS >
     <name: AID  | 
-    	vcomp: CVL, 
 		vcomp-ilist: IL, 
     	vcomp-size: M', 
     	AS' >  								
@@ -1271,21 +1244,19 @@ mod VALIDATOR-BEHAVIOR is
 		   	next-comp: B,
 	    	AS'' >
     { TG | SL }
-    (vg <- spawn)
+    (g <- spawn)
     => limit(TG <= #SIM-TIME-LIMIT * D, D)
 		<name: BID |												
-			vpending:       (VHL ; < v(N), h(S) , (- #DEPOSIT-SIZE) >), 
+			vpending:       (VHL ; < v(N), S, h(S), sampleUniWithInt(#MAX-SEED-VALUE), (- #DEPOSIT-SIZE) >), 
 			vpending-size:  s(M),
 			AS >
 		if B then
 	    	<name: AID  | 
-	    		vcomp: (CVL ; < v(N), S, sampleUniWithInt(#MAX-SEED-VALUE), mtCRS >), 
 				vcomp-ilist: (IL . N), 
 	    		vcomp-size: s(M'), 
 	    		AS' >  								
 	    else
 	    	<name: AID  | 
-	    		vcomp: (CVL ; < v(N), S, sampleUniWithInt(#MAX-SEED-VALUE), honest >), 
 				vcomp-ilist: IL, 
 	    		vcomp-size: M', 
 	    		AS' >  			
@@ -1297,7 +1268,7 @@ mod VALIDATOR-BEHAVIOR is
 		    	next-comp: sampleBerWithP(#ATTACK-PROB),
 	    		AS'' >
 		mytick(insert( { TG | SL }, 
-			[ TG + #VALIDATOR-ARRIVAL-DELAY, (VGID <- spawn) , 0]))
+			[ TG + #VARRIVAL-DELAY, (VGID <- spawn) , 0]))
 	[print TG ": VArrive: s(" N ")"] .
 endm
 
@@ -1314,35 +1285,27 @@ mod INIT-STATE is
 	vars VC : Config .
 	vars B : Bool .
 	var X : Int .
-	vars IL : NatList .
+	vars IL IL' IL1 IL1' : NatList .
 	vars RO : Role .
 	vars CRS : CRoleSet .
+	var P : Float .
 
-	---- makeVL(N): Generates a list of size N of (empty) public validator records 
+	op sampleInitCompromised : Nat Float NatList -> [NatList] .
+	eq sampleInitCompromised(0, P, IL) = IL .
+	rl sampleInitCompromised(s(N), P, IL) => 
+		if sampleBerWithP(#ATTACK-PROB) then 
+			sampleInitCompromised(N, P, N . IL) 
+		else 
+			sampleInitCompromised(N, P, IL) 
+		fi . 
+
+	---- makeVL(N): Generates a list of size N of (empty) general validator records 
 	----
 	---- e.g. makeVL(3) = < v(0),h(0),-32 > ; < v(1),h(0),-32 > ; < v(2),h(0),-32 >
 	---- 
 	op makeVL : Nat -> [VRecordList] .
 	eq makeVL(0) = nilVHL .
-	eq makeVL(s(N)) = makeVL(N) ; < v(N), h(0) , (- #DEPOSIT-SIZE) > .
-
-
-	---- makeCVL(N): Generates a list of size N of (empty) private validator records 
-	----
-	---- e.g. makeCVL(3) may rewrite to
-	---- 		< v(0), 2156527062, 1120604416, honest > ; 
-	---- 		< v(1), 3376653905, 764202170,  honest > ; 
-	---- 		< v(2), 3212733452, 2663109851, mtCRS >
-	---- 
-	op makeCVL : Nat -> [CVRecordList] .
-	eq makeCVL(0) = nilCVL .
-	eq makeCVL(s(N)) 
-		=  makeCVL(N) ; 
-			< v(N), 
-			  random(counter), 
-			  random(counter), 
-			  if sampleBerWithP(#ATTACK-PROB) then mtCRS else honest fi 
-			> .
+	eq makeVL(s(N)) = makeVL(N) ; < v(N), sampleUniWithInt(#MAX-SEED-VALUE), h(0), sampleUniWithInt(#MAX-SEED-VALUE) , (- #DEPOSIT-SIZE) > .
 
 	---- createInitDoReveals(IL, N): Generates a list of N scheduled elements containing 
 	---- 'doReveal' messages targeted to validators whose indices are given in IL (we 
@@ -1353,11 +1316,13 @@ mod INIT-STATE is
 	---- 		[1.01, v(1) <- doReveal(2), 0] ; 
 	---- 		[2.01, v(2) <- doReveal(3), 0]
 	---- 
-	op createInitDoReveals : NatList Nat -> [ScheduleList] .
-	eq createInitDoReveals(nilIL, N) 
+	op createInitDoReveals : NatList Nat NatList -> [ScheduleList] .
+	eq createInitDoReveals(nilIL, N, IL') 
 		= nil .
-	eq createInitDoReveals(IL . I, s(N)) 
-		= createInitDoReveals(IL, N) ; [0.01 + float(N), (v(I) <- doReveal(s(N))) , #MSG-DROP-PROB] .
+	eq createInitDoReveals(IL . I, s(N), (IL1 . I . IL1')) 
+		= createInitDoReveals(IL, N, (IL1 . I . IL1')) ; [0.01 + float(N), (v(I) <- doReveal(1, s(N))) , #MSG-DROP-PROB] .
+	eq createInitDoReveals(IL . I, s(N), IL') 
+		= createInitDoReveals(IL, N, IL') ; [0.01 + float(N), (v(I) <- doReveal(0, s(N))) , #MSG-DROP-PROB] [owise] .
 
 
 	---- initBlockchain(N): Initialize the Blockchain object with N validator records
@@ -1367,18 +1332,18 @@ mod INIT-STATE is
 			seed:           sampleUniWithInt(#MAX-SEED-VALUE),  ---- seed of previous game round
 			vpending:       nilVHL,             				---- list of pending validators 
 			vpending-size:  0,                  				---- their count
-			vappr:          makeVL(N),     						---- list of approved validators (as public validator records) 
-			vappr-size:     N           						---- their count
+			vapproved:          makeVL(N),     						---- list of approved validators (as general validator records) 
+			vapproved-size:     N           						---- their count
 		> .
 
 	---- initAttacker(N): Initialize the Attacker object with N validator records
 	op initAttacker : Nat -> [Object] .
 	eq initAttacker(N) = 
 		<name: a |								---- The Attacker Object
-			vcomp:			makeCVL(N),       	---- Private validator records
-			vcomp-ilist:	nilIL,				---- list of compromized validator indices
+			vcomp:			nilCVL,       	---- Private validator records
+			vcomp-ilist:	sampleInitCompromised(N, #ATTACK-PROB, nilIL),				---- list of compromised validator indices
 			vcomp-size:		0,           		---- their count
-			strategy:		[0 : nilSKL]		---- the attacker's strategy 
+			strategy:		0		---- the attacker's strategy 
 		> .	
 
 	---- initRandao(M, N, K): Initialize the RANDAO object with N validator records,
@@ -1389,7 +1354,7 @@ mod INIT-STATE is
 			status:         ready,              ---- status can be 'ready' or 'processing'
 			balance:        (N * K),       		---- current contract balance 
 			success-rounds: 0,                  ---- number of successful rounds
-			proposers:      nilPL, 				---- proposers participating in the current game round
+			precords:      nilPL, 				---- proposers participating in the current game round
 			prop-size:      M,                  ---- their count (in the steady state, this must be equal to #PROP-SIZE)
 			prop-ilist: 	nilIL, 				---- their indices,       
 			pnext:          1                   ---- next validator (time slot) to process
@@ -1399,7 +1364,7 @@ mod INIT-STATE is
 	---- as the next index, and A as the RANDAO object name 
 	op initVGen : Nat ActorName -> [Object] .
 	eq initVGen(N, RID) = 
-		<name: vg | 
+		<name: g | 
 			vcount: N, 
 			contract: RID,
 			next-seed: sampleUniWithInt(#MAX-SEED-VALUE),
@@ -1428,16 +1393,18 @@ mod INIT-STATE is
 		VC, N, M) 
 		= initProposers(
 			<name: bc | seed: S, AS >  
-			<name: r  | prop-ilist: computeNewNatList(N, M, S), AS' >        
+			<name: r  | prop-ilist: sampleIndexList(N, M, S), AS' >        
 			VC, N, M) .
 
 	---- The second step is form the list of proposer records 
 	eq initProposers(
-		<name: bc | vappr: VHL, AS >  
-		<name: r  |	prop-ilist: (I . IL), proposers: nilPL, AS' >        
+		<name: bc | vapproved: VHL, AS >  
+		<name: r  |	prop-ilist: (I . IL), precords: nilPL, AS' >        
+		<name: a  | vcomp: nilCVL, vcomp-ilist: IL', vcomp-size: 0, AS'' > 								
 		VC, N, M) 
-		= <name: bc | vappr: VHL, AS >  
-		  <name: r  | prop-ilist: (I . IL), proposers: formProposers(VHL, (I . IL)), AS' >        
+		= <name: bc | vapproved: VHL, AS >  
+		  <name: r  | prop-ilist: (I . IL), precords: makePropRecords(I . IL), AS' >        
+		  <name: a  | vcomp: setNewCVRoles(makeCVL((I . IL), IL'), (I . IL), VHL), vcomp-ilist: IL', vcomp-size: length(IL'), AS'' > 								
 		  VC .
 
 	---- initSystem(C, I): A helper function to initialize all validator records and the 
@@ -1447,41 +1414,28 @@ mod INIT-STATE is
 	---- If the validator is honest: Initialize its records 
 	op initSystem : Config Nat -> [Config] .
 	eq initSystem(
-			<name: bc    | vappr: (VHL ; < v(I), h(0), X >   ; VHL'), AS > 	
-			<name: a     | vcomp: (CVL ; < v(I), S, S', honest > ; CVL'), vcomp-ilist: IL, vcomp-size: N, AS' > 								
+			<name: bc    | vapproved: (VHL ; < v(I), S, h(0), S', X >   ; VHL'), AS > 	
 			VC, s(I))
 		= initSystem(
-				<name: bc    | vappr: (VHL ; < v(I), h(S), X >   ; VHL'), AS > 	
-				<name: a     | vcomp: (CVL ; < v(I), S, S', honest > ; CVL'), vcomp-ilist: IL, vcomp-size: N, AS' > 								
+				<name: bc    | vapproved: (VHL ; < v(I), S, h(S), S', X >   ; VHL'), AS > 	
 				VC, I) .
-	---- If the validator is compromized: Initialize its records and update the compromized 
-	---- validator list 
-	eq initSystem(
-			<name: bc    | vappr: (VHL ; < v(I), h(0), X >   ; VHL'), AS > 	
-			<name: a     | vcomp: (CVL ; < v(I), S, S', CRS > ; CVL'), vcomp-ilist: IL, vcomp-size: N, AS' > 								
-			VC, s(I))
-		= initSystem(
-				<name: bc    | vappr: (VHL ; < v(I), h(S), X >   ; VHL'), AS > 	
-				<name: a     | vcomp: (CVL ; < v(I), S, S', CRS > ; CVL'), vcomp-ilist: (I . IL), vcomp-size: s(N), AS' > 								
-				VC, I) .
+
 	---- Once done with all validators, return the updated configuration agumented with
 	---- the other configuration components (limit, round, validator generator, ... )
 	eq initSystem(
 			<name: r | prop-ilist: IL, prop-size: M, AS > 
-			<name: bc | vappr: VHL, AS' > 	
-			<name: a | vcomp: CVL, AS'' > 
+			<name: a | vcomp-ilist: IL', AS' >  
 			VC, 0) 
 		= limit(false, 0.0)
 		  round(1.0)
 		  <name: r | prop-ilist: IL, prop-size: M, AS > 
-		  <name: bc | vappr: VHL, AS' > 	
-		  <name: a | vcomp: setNewCVRoles(CVL, IL), AS'' > 
+		  <name: a | vcomp-ilist: IL', AS' >  
 		  VC 
 		  if #DYNAMIC-VLIST? then
 			initVGen(#INIT-VLIST-SIZE, r)
-			mytick(insertList({ 0.0 | createInitDoReveals(IL, M) }, [1.0, r <- nextSlot(2), #MSG-DROP-PROB] ; [#VALIDATOR-ARRIVAL-DELAY, vg <- spawn, 0] )) 		  	
+			mytick(insertList({ 0.0 | createInitDoReveals(IL, M, IL') }, [1.0, r <- nextSlot(2), #MSG-DROP-PROB] ; [#VARRIVAL-DELAY, g <- spawn, 0] )) 		  	
 		  else
-			mytick(insert({ 0.0 | createInitDoReveals(IL, M) }, [1.0, r <- nextSlot(2), #MSG-DROP-PROB])) 
+			mytick(insert({ 0.0 | createInitDoReveals(IL, M, IL') }, [1.0, r <- nextSlot(2), #MSG-DROP-PROB])) 
 		  fi .
 endm
 
@@ -1495,7 +1449,7 @@ mod ANALYSIS-INTERFACE is
     vars AID RID : ActorName .
     vars CVL : CVRecordList .
     vars AS AS' : AttributeSet .
-    vars IL IL' : NatList .
+	vars IL IL' IL1 IL1' : NatList .
 
     *******************************************************************
     ***** 0. matchScore: the number of compromised proposers in the 
@@ -1506,7 +1460,7 @@ mod ANALYSIS-INTERFACE is
 		<name: AID | vcomp-ilist: IL, AS >  
 		<name: RID | prop-ilist: IL', AS' >  
 		C )
-      = float(countCompromized(IL', IL)) .
+      = float(countCompromised(IL', IL)) .
 
     *******************************************************************
     ***** 1. lastWordScore: the length of the compromised tail (last 
@@ -1517,7 +1471,7 @@ mod ANALYSIS-INTERFACE is
 		<name: AID | vcomp-ilist: IL, AS >  
 		<name: RID | prop-ilist: IL', AS' >  
 		C )
-      = float(countCompromizedTail(IL', IL)) .
+      = float(countCompromisedTail(IL', IL)) .
 
 
 	***** to be used by PVeStA
