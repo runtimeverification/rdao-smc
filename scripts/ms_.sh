@@ -16,7 +16,7 @@
 mfile='rdao.maude'
 mpfile='rdao-params.maude'
 ffile='ms.quatex'
-ofile='ms_.out'
+ofile='ms_new_sf0_sf1.out'
 nthrd='5'
 
 ## Initialize model parameters
@@ -26,7 +26,7 @@ initvlistsize='100 * #CYCLE-LENGTH'
 maxseedvalue='4294967295'
 
 attackprob='0.2'
-scorefunction='0'
+scorefunction='1'
 minattackscore='#CYCLE-LENGTH / 10'
 
 transmissiondelay='genRandom(0.01, 0.1)'
@@ -70,11 +70,11 @@ printf "$output" >> $ofile
 
 cnt=1
 
-v_clength_lst="1 2 3 4 5 6 7 8 9 10 20"
-v_ivsizef_lst="10 50 100 1000"
-v_aprob_lst="0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9"
+v_clength_lst="10"
+v_ivsizef_lst="100 500 1000"
+v_aprob_lst="0.1 0.2 0.3 0.4 0.5"
 v_sfun_lst="0 1"
-v_mascore_lst="1 2 3 4 5"
+v_mascore_lst="1"
 
 for v_clength in $v_clength_lst ; do
 	for v_aprob in $v_aprob_lst ; do
@@ -105,7 +105,7 @@ for v_clength in $v_clength_lst ; do
 
 		            ## Output the independent variable 
 				    xname='simtimelimit'
-				    ls="10.0 50.0 100.0 500.0 1000.0"
+				    ls="100.0 200.0 400.0 600.0 1000.0"
 				    setIV "$xname" "$ls"		
 
 		            ## Collect Data points

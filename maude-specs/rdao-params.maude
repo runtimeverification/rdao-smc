@@ -2,8 +2,8 @@
 *** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
 *** 
 *** Musab A. Alturki
-*** September 2018
-*** Runtime Verifcation Inc. 
+*** November 2018
+*** Runtime Verification Inc. 
 )
 
 ***( 
@@ -27,16 +27,16 @@ mod PARAMS is
     ---- length of a time slot is exactly one logical time unit)
     ---- e.g. 1000.0 time units (or time slots)
 	op #SIM-TIME-LIMIT : -> [Float] .			
-    eq #SIM-TIME-LIMIT = 200.0 .
+    eq #SIM-TIME-LIMIT = 100.0 .
 
     ---- The number of steps in a cycle (or round) of the game, which is
     ---- also the number of proposers in the list of proposers in any 
     ---- round. 
     op #CYCLE-LENGTH : -> [Nat] .   
-    eq #CYCLE-LENGTH = 10 .
+    eq #CYCLE-LENGTH = 5 .
 
     ---- Initial size of the list of approved validators (the list  
-    ---- from which #CYCLE-LENGTH proposers are sampled at the begining
+    ---- from which #CYCLE-LENGTH proposers are sampled at the beginning
     ---- of a round). Note that if the validator list is dynamic, the 
     ---- actual size of the validator list during protocol execution 
     ---- may be higher or lower than this initial value. The value  
@@ -44,56 +44,38 @@ mod PARAMS is
     ---- multiple of the size of the proposers list #CYCLE-LENGTH 
     ---- (e.g. 100 * #CYCLE-LENGTH)
     op #INIT-VLIST-SIZE : -> [Nat] .               
-    eq #INIT-VLIST-SIZE = 100 * #CYCLE-LENGTH .
+    eq #INIT-VLIST-SIZE = 500 * #CYCLE-LENGTH .
 
     ---- Maximum seed value: this is fixed to the maximum allowed by 
-    ---- Maude's implementaion of the (pseudo-)random function random()
+    ---- Maude's implementation of the (pseudo-)random function random()
     op #MAX-SEED-VALUE : -> [Nat] .         
     eq #MAX-SEED-VALUE = 4294967295 .
 
-    ---- Probability of a validator being compromized (controlled by the 
+    ---- Probability of a validator being compromised (controlled by the 
     ---- attacker), e.g. 0.2 means that, on average, 20% of validators are
     ---- attacker-controlled
     op #ATTACK-PROB : -> [Float] .  		
-    eq #ATTACK-PROB = 0.5 .
+    eq #ATTACK-PROB = 0.4 .
  
     ---- The score function the attacker is trying to optimize for. 
     ---- There are two score functions: 
-    ---- 1. countCompromized(L): which counts the total number of 
-    ----    compromized proposers among the proposers list L (regardless
+    ---- 1. countCompromised(L): which counts the total number of 
+    ----    compromised proposers among the proposers list L (regardless
     ----    of where they actually appear in L). For example, assuming 
-    ----    only proposers v(3), v(5) and v(6) are compromized, we have 
-    ----    countCompromized(1 . 2 . 3 . 4 . 5 . 6) = 3.
-    ---- 2. countCompromizedTail(L): which counts the number of 
-    ----    compromized proposers occupying the tail of the list L (the
-    ----    length of the compromized tail of the list). For instance, 
+    ----    only proposers v(3), v(5) and v(6) are compromised, we have 
+    ----    countCompromised(1 . 2 . 3 . 4 . 5 . 6) = 3.
+    ---- 2. countCompromisedTail(L): which counts the number of 
+    ----    compromised proposers occupying the tail of the list L (the
+    ----    length of the compromised tail of the list). For instance, 
     ----    for the example above, we have 
-    ----    countCompromizedTail(1 . 2 . 3 . 4 . 5 . 6) = 2 (since
-    ----    the comprimized tail consists of v(5) and v(6)). 
-    ---- 0 denotes countCompromized, while 1 denotes countCompromizedTail
+    ----    countCompromisedTail(1 . 2 . 3 . 4 . 5 . 6) = 2 (since
+    ----    the compromised tail consists of v(5) and v(6)). 
+    ---- 0 denotes countCompromised, while 1 denotes countCompromisedTail
     op #SCORE-FUNCTION : -> [Nat] .         
-    eq #SCORE-FUNCTION = 0 .
-
-    ---- Lower bound on what the attacker considers sufficient control 
-    ---- on the list of proposers of the next round (the minimum score it
-    ---- would want to achieve - given the current seed - to claim success). 
-    ---- This bound (or score) is given in terms of the number of proposers
-    ---- it controls computed in a particular way (depending on the
-    ---- attacker's strategy). For example, if the attacker's strategy is to 
-    ---- maximize the total number of compromized proposers in the next
-    ---- round, then a value of 1 for #MIN-ATTACK-SCORE would mean that
-    ---- a seed that results in controling at least 1 proposer is a good 
-    ---- seed. If the strategy is maximize the length of the compromized
-    ---- tail of the proposers list, then 1 would mean that having a 
-    ---- non-empty tail that is controled by the attacker is a success 
-    ---- (regardless if there were other compromized proposers that are not
-    ---- part of the compromized tail). 
-    ---- The bound is typically given as a fraction of #CYCLE-LENGTH.
-    op #MIN-ATTACK-SCORE : -> [Nat] .		
-    eq #MIN-ATTACK-SCORE = 1 .
+    eq #SCORE-FUNCTION = 1 .
 
     ---- One-way message transmission delay (0.0 means instantaneous 
-    ---- message delivery, and thus synchrnous communication). 
+    ---- message delivery, and thus synchronous communication). 
     ---- Transmission delays are typically uniformly sampled from a 
     ---- reasonable range that represents the actual network latency.
     op #TRANSMISSION-DELAY : -> [Float] .               
@@ -103,7 +85,7 @@ mod PARAMS is
     ---- modeling a potentially unreliable communication network.
     ---- 0 means "not to be dropped", while 1 means "to be dropped".
     ---- Message drops in a realistic communication medium can be modeled 
-    ---- by a Bernoulli distribution with a (drop) probablility p
+    ---- by a Bernoulli distribution with a (drop) probability p
     op #MSG-DROP-PROB : -> [Nat] .                  
     eq #MSG-DROP-PROB = 0 .
 

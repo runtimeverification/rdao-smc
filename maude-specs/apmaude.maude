@@ -4,7 +4,7 @@
 *** 
 *** Musab A. Alturki
 *** October 2018
-*** Runtime Verifcation Inc. 
+*** Runtime Verification Inc. 
 )
 
 ***( 
@@ -83,6 +83,7 @@ mod ACTOR is
   ---- Attributes and sets of attributes 
   sorts Attribute AttributeSet .
   subsort Attribute < AttributeSet .
+
   ---- AttributeSet constructors: 
   ----   *  mt for the empty set of attributes, and 
   ----   *  _,_ an associative and commutative juxtaposition operator with identity mt
@@ -117,6 +118,7 @@ mod MESSAGE is
 
   ---- Messages
   sort Msg .
+
   ---- Message constructor
   ---- e.g. A <- C is a message targeted to the actor named A with content C 
   op _<-_ : ActorName Content -> Msg [prec 40 format (g o r o)] .
@@ -141,7 +143,7 @@ endm
 *** This says that the current global time is 5.2 (we model a dense time domain using
 *** floating point numbers), and that there three scheduled messages: M1 to be 
 *** delivered at time 6.3, M2 at time 7.2 and M3 at time 7.9. Note that the current  
-*** global time wiil always be the least time value that appears in the scheduler
+*** global time will always be the least time value that appears in the scheduler
 *** (since all delayed messages are to be delivered some time in the future, and once
 *** it is time to deliver a message, it is immediately removed from the scheduler).
 )
@@ -150,6 +152,7 @@ mod SCHEDULER is
 
   --- Scheduler 
   sorts Scheduler .
+
   --- The Scheduler constructor 
   op {_|_} : Float ScheduleList -> Scheduler [format (nb! r b! o b! o)] .
 
@@ -188,7 +191,7 @@ mod SCHEDULER is
 
   ---- Inserting a scheduled element into a list of scheduled elements
   ---- The insertion function guarantees that the resulting list will have its
-  ---- scheduled elments totally ordered in non-decreasing time of delivery. 
+  ---- scheduled elements totally ordered in non-decreasing time of delivery. 
   ---- Note that ties (elements with exactly the same time-of-delivery values) 
   ---- are broken by giving priority to *older* elements that already exist in
   ---- the list.  
@@ -205,7 +208,7 @@ mod SCHEDULER is
        if T1 <= T2 then [ T1 , M1 , D] ; insert(SL, [ T2 , M2 , 0]) 
                    else ([ T2 , M2 , 0] ; [ T1 , M1 , D] ; SL) fi .
 
-  ---- These two operators generalize insertion to mutiple elements (a list
+  ---- These two operators generalize insertion to multiple elements (a list
   ---- of elements). The generalization is straightforward: inserting a list 
   ---- SL1 into SL2 proceeds by inserting each element in SL1 into SL2 in turn.
 
@@ -232,8 +235,7 @@ endm
 *** later modules to model the RANDAO scheme. The state is modeled as a 
 *** configuration (a multiset) of Actor objects. Actors communicate
 *** asynchronously via message passing. To help avoid any unquantified 
-*** non-determinism, which is required for statistical verification 
-*** to apply (see references given in the readme file for more details), 
+*** non-determinism, which is required for statistical verification, 
 *** a scheduler object is used to enforce a total (time) ordering on 
 *** messages in transit. The scheduler ensures that exactly one message 
 *** (the next message to be processed by an actor in the system) is  
@@ -243,8 +245,8 @@ endm
 *** in order and one-by-one from the list and delivered to their target
 *** actors for processing. Upon consuming a message, an actor may update 
 *** its internal state and emit zero or more new messages, which are 
-*** inserted in the scheduler. This process may continue indifinitely, 
-*** or until a stopping condition is satified (a time limit is reached,
+*** inserted in the scheduler. This process may continue indefinitely, 
+*** or until a stopping condition is satisfied (a time limit is reached,
 *** for example).  
 ***
 )
@@ -281,7 +283,7 @@ mod APMAUDE is
   eq mytick({ GT | [ T1 , M1 , D] ; SL }) = M1 { T1 | SL } .
 
 
-  ---- The follwing operations define an interface to PVeStA, and should not be 
+  ---- The following operations define an interface to PVeStA, and should not be 
   ---- altered: 
 
   ---- Returns the current global time of a configuration (using its scheduler)
@@ -295,12 +297,12 @@ mod APMAUDE is
   ---- in multiple rounds of execution and multiple messages being delivered
   ---- and processed, and thus called a *macro* step in the system. tick is 
   ---- left unspecified at this stage to allow the specification writer to 
-  ---- desing how this macro step of the system is defined.  
+  ---- design how this macro step of the system is defined.  
   ---- 
   ---- Note that an alternative design would have used tick for mytick above
   ---- so that a step in the system is taken to be exactly one step of advancing
   ---- time and processing exactly one message. This design would however be 
-  ---- extremly inefficnetly executable and restricts the desinger's ability 
+  ---- extremely inefficiently executable and restricts the designer’s ability 
   ---- to manage the size of execution rounds in the system.
   op tick : Config -> Config .
 

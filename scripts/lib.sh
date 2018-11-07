@@ -108,7 +108,7 @@ function collectData {
         sed -i '' 's|eq[[:space:]]#MSG-DROP-PROB[[:space:]]*=.*|eq #MSG-DROP-PROB = '"${!msgdropprob_name}"' .|' $mpfile
 
         sed -i '' 's|eq[[:space:]]#DYNAMIC-VLIST?[[:space:]]*=.*|eq #DYNAMIC-VLIST? = '"${!dynamicvlist_name}"' .|' $mpfile
-        sed -i '' 's|eq[[:space:]]#VALIDATOR-ARRIVAL-DELAY[[:space:]]*=.*|eq #VALIDATOR-ARRIVAL-DELAY = '"${!validatorarrivaldelay_name}"' .|' $mpfile
+        sed -i '' 's|eq[[:space:]]#VARRIVAL-DELAY[[:space:]]*=.*|eq #VARRIVAL-DELAY = '"${!validatorarrivaldelay_name}"' .|' $mpfile
         sed -i '' 's|eq[[:space:]]#DEPOSIT-SIZE[[:space:]]*=.*|eq #DEPOSIT-SIZE = '"${!depositsize_name}"' .|' $mpfile
 
         ## Run the clients and record the result             

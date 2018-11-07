@@ -1,24 +1,20 @@
 # rdao-smc
 This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite theory specified in Maude. The model is (1) computational, enabling automated reasoning about protocol exploitability and attack profitability, and (2) parametric, allowing for the analysis of a wide range of configuraitons and assumptions. 
 
-*Please note that this is work-in-progress, and the model is currently being actively developed.*
-
-*Still to come:*
-1. *VDF Model* (?) (VDFs provide strong guarantees suitable for worst-case type of analysis -- not so sure that VDF modeling would fit the probabilistic model)
-2. *analysis*
+*Please note that this is work-in-progress.*
 
 *This is part of work being done at Runtime Verificaiton Inc.*
 
 ## Model Basics
 The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a node) or a virtual one (such as an attacker controlling a set of validators) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every event is timestamped. 
 
-The model uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size `#CYCLE-LENGTH` means that a game round will consume exactly `#CYCLE-LENGTH` time slots. A validator represents one unit of validation in the protocol (so all validators are have the same weight. However, an attacker my control more than one validator and thus may have more than one unit of share in the network. 
+The model uses one time unit to model a time slot in the RANDAO process. Therefore, a proposers list of size `#CYCLE-LENGTH` means that a game round will consume exactly `#CYCLE-LENGTH` time slots. A validator represents one unit of validation in the protocol (so all validators are have the same weight). However, an attacker my control more than one validator and thus may have more than one unit of share in the network. 
 
 Initially, the state of the protocol is bootstrapped with a validator set of size `#INIT-VLIST-SIZE`, of which `#CYCLE-LENGTH` validators are pseudo-randomly selected as proposers. The RANDAO contract and the validators are all initialized with pseudo-randomly generated seeds. While the protocol executes, an incoming validator (which could be attacker-controlled) may join the RANDAO process and become available to participate in the next round of the game. 
 
 Although the RANDAO process itself is mostly deterministic, there are a few important sources of (probabilistic) non-determinism, which are captured by the model:
 
-1. In each game round, (honest) proposers generate new random seeds for future rounds of the game in which they participate. Furthermore, new validators may join the network (and some of which may be compromized by the attacker).
+1. In each game round, (honest) proposers generate new random seeds for future rounds of the game in which they participate. Furthermore, new validators may join the network (and some of which may be compromised by the attacker).
 2. Uncertainty in attacker behavior is probabilistically captured, based on a suitable attack model.
 3. Environment uncertainties, such as transmission delays and network failures, are also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
 
@@ -34,14 +30,14 @@ The specifications can be found in the **/specs** directory.
 
 The model parameters are declared as Maude operators, and are given values using Maude equations given in the module `PARAMS` in **rdao-params.maude**. Different scenarios can be investigated by changing the values in this module.
 
-A fairly recent version of Maude ([Maude 2.4](http://maude.cs.illinois.edu/ "Maude") or newer) will need to be downloaded and installed. Installation insructions are available in the linked website above. Having the Maude executable available in your `PATH` (e.g. in bash: `export PATH=<path_to_the_maude_executable>:$PATH`) is recommended (will be required later for statiscal verification with PVeStA).
+A fairly recent version of Maude ([Maude 2.4](http://maude.cs.illinois.edu/ "Maude") or newer) will need to be downloaded and installed. Installation insructions are available in the linked website above. Having the Maude executable available in your `PATH` (e.g. in bash: `export PATH=<path_to_the_maude_executable>:$PATH`) is recommended (will be required later for statistical verification with PVeStA).
 
 Once Maude is installed and added to `PATH`, one may run simulations by following the steps below:
 
 1. Switch to the **/specs** directory, and run Maude to get into its prompt `Maude>`.
 2. Issue the command: `set clear rules off .` to explicitly ask Maude to maintain its state between command runs (this is necessary for pseudo-random number generation).
 3. load the model files: `load apmaude.maude` and then `load rdao.maude`.
-4. Use the rewrite command to obtain a sample run: `rew tick(initState) .`. The result is a configuration term that specifies the final state of the protocol session (as specified by the `#SIM-TIME-LIMIT` parameter). You may repeat the command to obtain potentially different runs of the protocol.
+4. Use the rewrite command to obtain a sample run: `rew tick(initState) .`. The result is a configuration term that specifies the final state of the protocol session (as determined by the `#SIM-TIME-LIMIT` parameter). You may repeat the command to obtain potentially different runs of the protocol.
 
 The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the `print` attribute, which can show a complete log of events generated in the sample run.
 
@@ -53,12 +49,12 @@ The model is heavily parameterized to enable experimenting with different setups
     ---- (in logical time units -- or slots in our case as the 
     ---- length of a time slot is exactly one logical time unit)
     ---- e.g. 1000.0 time units (or time slots)
-    eq #SIM-TIME-LIMIT = 100.0 .
+    eq #SIM-TIME-LIMIT = 200.0 .
 
     ---- The number of steps in a cycle (or round) of the game, which is
     ---- also the number of proposers in the list of proposers in any 
     ---- round. 
-    eq #CYCLE-LENGTH = 5 .
+    eq #CYCLE-LENGTH = 10 .
 
     ---- Initial size of the list of approved validators (the list  
     ---- from which #CYCLE-LENGTH proposers are sampled at the begining
@@ -67,49 +63,33 @@ The model is heavily parameterized to enable experimenting with different setups
     ---- may be higher or lower than this initial value. The value  
     ---- can be specified as an absolute value (e.g. 10000) or as a 
     ---- multiple of the size of the proposers list #CYCLE-LENGTH 
-    ---- (e.g. 100 * #CYCLE-LENGTH)
-    eq #INIT-VLIST-SIZE = 100 * #CYCLE-LENGTH .
+    ---- (e.g. 500 * #CYCLE-LENGTH)
+    eq #INIT-VLIST-SIZE = 500 * #CYCLE-LENGTH .
 
     ---- Maximum seed value: this is fixed to the maximum allowed by 
     ---- Maude's implementaion of the (pseudo-)random function random()
     eq #MAX-SEED-VALUE = 4294967295 .
 
-    ---- Probability of a validator being compromized (controlled by the 
+    ---- Probability of a validator being compromised (controlled by the 
     ---- attacker), e.g. 0.2 means that, on average, 20% of validators are
     ---- attacker-controlled
-    eq #ATTACK-PROB = 0.2 .
+    eq #ATTACK-PROB = 0.1 .
  
     ---- The score function the attacker is trying to optimize for. 
     ---- There are two score functions: 
-    ---- 1. countCompromized(L): which counts the total number of 
-    ----    compromized proposers among the proposers list L (regardless
+    ---- 1. countCompromised(L): which counts the total number of 
+    ----    compromised proposers among the proposers list L (regardless
     ----    of where they actually appear in L). For example, assuming 
-    ----    only proposers v(3), v(5) and v(6) are compromized, we have 
-    ----    countCompromized(1 . 2 . 3 . 4 . 5 . 6) = 3.
-    ---- 2. countCompromizedTail(L): which counts the number of 
-    ----    compromized proposers occupying the tail of the list L (the
-    ----    length of the compromized tail of the list). For instance, 
+    ----    only proposers v(3), v(5) and v(6) are compromised, we have 
+    ----    countCompromised(1 . 2 . 3 . 4 . 5 . 6) = 3.
+    ---- 2. countCompromisedTail(L): which counts the number of 
+    ----    compromised proposers occupying the tail of the list L (the
+    ----    length of the compromised tail of the list). For instance, 
     ----    for the example above, we have 
-    ----    countCompromizedTail(1 . 2 . 3 . 4 . 5 . 6) = 2 (since
-    ----    the comprimized tail consists of v(5) and v(6)). 
-    ---- 0 denotes countCompromized, while 1 denotes countCompromizedTail
+    ----    countCompromisedTail(1 . 2 . 3 . 4 . 5 . 6) = 2 (since
+    ----    the compromised tail consists of v(5) and v(6)). 
+    ---- 0 denotes countCompromised, while 1 denotes countCompromisedTail
     eq #SCORE-FUNCTION = 0 .
-
-    ---- Lower bound on what the attacker considers sufficient control 
-    ---- on the list of proposers of the next round (the minimum score it
-    ---- would want to achieve - given the current seed - to claim success). 
-    ---- This bound (or score) is given in terms of the number of proposers
-    ---- it controls computed in a particular way (depending on the
-    ---- attacker's strategy). For example, if the attacker's strategy is to 
-    ---- maximize the total number of compromized proposers in the next
-    ---- round, then a value of 1 for #MIN-ATTACK-SCORE would mean that
-    ---- a seed that results in controling at least 1 proposer is a good 
-    ---- seed. If the strategy is to maximize the length of the compromized
-    ---- tail of the proposers list, then 1 would mean that having a 
-    ---- non-empty tail that is controled by the attacker is a success 
-    ---- (regardless if there were other compromized proposers that are not
-    ---- part of the compromized tail). 
-    eq #MIN-ATTACK-SCORE = 1 .
 
     ---- One-way message transmission delay (0.0 means instantaneous 
     ---- message delivery, and thus synchrnous communication). 
@@ -131,9 +111,9 @@ The model is heavily parameterized to enable experimenting with different setups
 
     ---- The arrival delay of new validators joining the network (relevant 
     ---- only when #DYNAMIC-VLIST? is true). The delay is usually sampled 
-    ---- form an appropriate distribution (typically the exponential 
+    ---- from an appropriate distribution (typically the exponential 
     ---- distribution)
-    eq #VALIDATOR-ARRIVAL-DELAY = sampleExpWithMean(1.5) .
+    eq #VARRIVAL-DELAY = sampleExpWithMean(1.5) .
 
     ---- The size in Ether of a validator's deposit to join the network.
     ---- This has no significant role in the current version of the 
@@ -147,16 +127,16 @@ Once the parameters are set, the steps explained in the previous section may now
 
 The model can be used not only to simulate the protocol but also to statistically verify certain properties about it, most importantly the attacker's ability to bias the randomness of the protocol. For this, we use the statistical model checking and quantitiative analysis tool [PVeStA](http://maude.cs.uiuc.edu/tools/pvesta/ "PVeStA") alongside [Maude](http://maude.cs.illinois.edu/ "Maude"). The properties to be verified are specified as temporal quantitative expressions in QuaTEx, and are fed into PVeStA (along with the Maude models) for evaluation. 
 
-We focus on two properties:
+To get a quantitative measure of the potential bias achievable by an attacker, we define two properties:
 
-1. Compromized Proposers: Within `t` time units, how much bias will the attacker be able to achieve on the protocol's randomness measured in terms of the number of compromized proposers? (`ms.quatex`)
+1. Matching Score (MS): Within `t` time units, how much bias will the attacker be able to achieve on the protocol's randomness measured in terms of the number of compromised proposers? (`ms.quatex`)
 
-2. Compromized Last Proposers: Within `t` time units, how much bias will the attacker be able to achieve on the protocol's randomness measured in terms of the number of compromized last proposers? (`lws.quatex`)
+2. Last-Word Score (LWS): Within `t` time units, how much bias will the attacker be able to achieve on the protocol's randomness measured in terms of the number of compromised last proposers (the length of the longest compromised tail)? (`lws.quatex`)
 
 These two properties can be analyzed assuming different setups (e.g. static vs. dynamic validator sets) and assumptions (e.g. attacker controls 20% of the network). To get started with the analysis, you will need to:
 
 *  Download and install [Maude 2.4](http://maude.cs.illinois.edu/ "Maude") or newer, and have it available in your PATH (e.g. in bash: `export PATH=<path_to_the_maude_executable>:$PATH`). Maude will have to be accessible from anywhere in your terminal.
-*  Download the [PVeStA](http://maude.cs.uiuc.edu/tools/pvesta/ "PVeStA") binaries (the server and client jar files). Note that PVeStA needs Java 1.6 or later installed (there is however an apparent incompatibility with Java 9).
+*  Download the [PVeStA](http://maude.cs.uiuc.edu/tools/pvesta/ "PVeStA") binaries (the server and client jar files). Note that PVeStA needs Java 1.6 or later installed (there is, however, an apparent incompatibility with Java 9).
 
 As explained [here](http://maude.cs.uiuc.edu/tools/pvesta/usage.html "PVeStA Usage"), there are three steps for running a verification task with PVeStA:
 
@@ -184,7 +164,7 @@ For simplicity, we will assume two server instances running on the same machine,
       java -jar <pvesta-jar-files-path>/pvesta-client.jar -l portlist2 -m rdao.maude -f ms.quatex -a 0.05 -d1 0.05
       ```
 
-The last command initiates the verification task and may take a while to execute (depending on the parameters chosen for the model). Once it finishes, the result is output to the screen. The servers will continue to run in the background waiting for further requests. So, you may repeat step 4 above right away to verify other properties, or re-verify the same property but with different model parameters. Of course, sequences of verification tasks can be automated by writing appropriate scripts. Sample shell scripts to automate these steps can also be found the **/specs** subdirectory.
+The last command initiates the verification task and may take a while to execute (depending on the parameters chosen for the model). Once it finishes, the result is output to the screen. The servers will continue to run in the background waiting for further requests. So, you may repeat step 4 above right away to verify other properties, or re-verify the same property but with different model parameters. Of course, sequences of verification tasks can be automated by writing appropriate scripts. Sample shell scripts to automate these steps can also be found the **/scripts** subdirectory.
 
 
 ## Getting Help
