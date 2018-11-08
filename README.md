@@ -1,7 +1,7 @@
 # rdao-smc
-This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite theory specified in Maude. The model is (1) computational, enabling automated reasoning about protocol exploitability and attack profitability, and (2) parametric, allowing for the analysis of a wide range of configuraitons and assumptions. 
+This is a formal model of RANDAO-based RNG schemes as a probabilistic rewrite theory specified in Maude. The model is (1) *probabilistic*, specifying randomized behaviors and environment uncertainties, (2) *real-time*, capturing timed events and message transmission delays, (3) *computational*, enabling automated reasoning about protocol exploitability and attack profitability, and (4) parametric, allowing for the analysis of a wide range of configuraitons and assumptions. 
 
-*Please note that this is work-in-progress.*
+In this document, we describe generally the model, and outline how the model may be used to simulate executions of the RANDAO scheme, play with the model parameters and perform full-fledged statistical verification tasks using Maude and PVeStA. A more detailed technical report describing the analysis performed using this model and the analysis results can be found [here](). 
 
 *This is part of work being done at Runtime Verificaiton Inc.*
 

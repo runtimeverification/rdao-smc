@@ -617,9 +617,6 @@ mod CONFIG is
     ---- of a simulation run (the macro step captured by 'tick')
     op limit : Bool Float -> Config [format (nb! o)] .
 
-    ---- round(F): Maintains the current RANDAO game round 
-    ---- (not strictly needed but is there for convenience)
-    op round : Float   -> Config [format (nb! o)] .
 endm
 
 
@@ -975,7 +972,6 @@ mod RANDAO-BEHAVIOR is
     ----
   rl [RAdvanceRound] :
  	limit(true, D)
- 	round(R)
  	<name: BID |		
 			vapproved: 		VHL,
 			vapproved-size: N,
@@ -997,9 +993,7 @@ mod RANDAO-BEHAVIOR is
 			AS'' >
     { TG | SL }
     (RID <- nextRound)
-    =>  ---- increment the round counter 
-     	round(R + 1.0)
-     	---- Update validator records and include pending validators 
+    =>  ---- Update validator records and include pending validators 
 	 	<name: BID |		
 				vapproved: 		(updateRewards(VHL, CL) ; VHL'), 
 				vapproved-size:	(N + N'),
@@ -1688,7 +1682,6 @@ mod INIT-STATE is
 			<name: a | vcomp-ilist: IL', AS' >  
 			VC, 0) 
 		= limit(false, 0.0)
-		  round(1.0)
 		  <name: r | prop-ilist: IL, prop-size: M, AS > 
 		  <name: a | vcomp-ilist: IL', AS' >  
 		  VC 
