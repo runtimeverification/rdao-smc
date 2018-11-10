@@ -115,14 +115,16 @@ mod NATLIST is
 	vars S : Seed . 
 	vars IL IL' IL1 IL1' IL2 IL2' : NatList .
 
-	---- Sampling a list of indices given a seed 
-    op sampleIndexList : Nat Nat Seed -> [NatList] .
-	---- sampleIndexList(N, M, S): 
+	---- Sampling a list of (unique) indices given a seed 
+    op sampleIndexList : Nat Nat Seed NatList -> [NatList] .
+	---- sampleIndexList(N, M, S, IL): 
 	---- 	N: the population size (the total number of validators) 
 	----    M: the sample size (the number of proposers to sample)  
 	----    S: the (starting) seed to be used in computing the list of numbers 
+	----	IL: the list of indices sampled so far 
 	----    Result: Returns a list of indices (natural numbers) computed using  
-	----            the sequence of seeds S, S+1, ... , S+(M-1)
+	----            the sequence of seeds S, S+1, ... , S+(M-1) so that the indicies
+	----			are not repeated 
 	----    Note: In an actual implementation of the system, the seed S is used 
 	----          along with a pseudo-random number generator to sample the 
 	----          list of indices. This is not done here, as it would result 
@@ -139,14 +141,34 @@ mod NATLIST is
 	----          protocol since the seed S itself is generated pseudo-randomly
 	----          (using the function random), and thus, the resulting number 
 	----          is also pseudo-random. 
-	----    e.g.: sampleIndexList(100, 5, 748692346) = 80 . 20 . 52 . 76 . 92
+	----    e.g.: sampleIndexList(100, 5, 748692346, nilIL) = 80 . 20 . 52 . 76 . 92
 	----
-    ---- Sampling 0 proposers yields the empty list 
-    eq sampleIndexList(N, 0, S) = nilIL .
-    ---- Sampling 1 or more: compute the first sample and prepend it it to the rest   
-	eq sampleIndexList(N, s(K), S) = (S * s(K) * s(s(K))) rem N . sampleIndexList(N, K, S) .
+    ---- No more sampling to be done, so return the list computed thus far 
+    eq sampleIndexList(N, 0, S, IL) = IL .
+    ---- Sampling 1 or more: compute the first unique sample using computeUniqueIndex ,
+    ---- and append it to the list sampled so far while repeating the process for the
+    ---- rest of samples to be computed   
+	ceq sampleIndexList(N, s(K), S, IL) 
+		= sampleIndexList(N, K, S, IL . M) 
+		if M := computeUniqueIndex(N, (S * s(K) * s(s(K))) rem N, IL) .
     ---- This is very inefficient -- to be avoided!
     ----eq sampleIndexList(N, s(K), S) = random(S + s(K)) rem N . sampleIndexList(N, K, S) .
+
+	---- Sample an index that does not appear in the given list
+	---- A helper function to sampleIndexList 
+	op computeUniqueIndex : Nat Nat NatList -> [Nat] .
+	---- computeUniqueIndex(N, M, IL): 
+	---- 	N: the population size (the total number of validators) 
+	----    M: the index sampled   
+	----	IL: the list of indices  
+	----    Result: Returns an sampled index that does not appear in IL 
+	----
+	---- If the sampled M appears in the list, then sample another value 
+	---- and repeat the check 
+	eq computeUniqueIndex(N, M, IL . M . IL') 
+	  = computeUniqueIndex(N, s(M) rem N, IL . M . IL') .
+	---- Otherwise, return the sampled value M 
+	eq computeUniqueIndex(N, M, IL) = M [owise] .
 
     ---- First scoring function: computing compromised indices 
  	op countCompromised : NatList NatList -> [Nat] .
@@ -925,7 +947,7 @@ mod RANDAO-BEHAVIOR is
 					status: 	processing, 
 					precords:	([ VID , B ] ; CL),
 					--- Begin sampling the next-round list of proposer indices       
-					prop-ilist: sampleIndexList(N + N', #CYCLE-LENGTH, S),       
+					prop-ilist: sampleIndexList(N + N', #CYCLE-LENGTH, S, nilIL),       
 					pnext:	 	1,
 					AS' >
     		{ TG | SL }
@@ -1192,7 +1214,7 @@ mod VALIDATOR-BEHAVIOR is
 	eq computeScore(S, N, M, IL) 
 	 	= computeScoreFunction(
 					#SCORE-FUNCTION, 
-					sampleIndexList(N, M, S),
+					sampleIndexList(N, M, S, nilIL),
 					IL) .
 
 	---- Find a strategy with a maximum score 
@@ -1651,7 +1673,7 @@ mod INIT-STATE is
 		VC, N, M) 
 		= initProposers(
 			<name: bc | seed: S, AS >  
-			<name: r  | prop-ilist: sampleIndexList(N, M, S), AS' >        
+			<name: r  | prop-ilist: sampleIndexList(N, M, S, nilIL), AS' >        
 			VC, N, M) .
 
 	---- The second step is form the list of proposer records 
