@@ -1,0 +1,111 @@
+***(
+*** Part of rdao-smc: A probabilistic rewriting model of RANDAO schemes
+*** 
+*** Musab A. Alturki
+*** November 2018
+*** Runtime Verification Inc. 
+)
+
+***( 
+*** Model Parameters
+***
+*** This module encapsulates all the configurable global parameters
+*** of the model. These parameters are referred to in the rest of 
+*** the specification. Different assumptions and attack scenarios
+*** can be modeled and analyzed by setting the appropriate values
+*** here in this module.
+*** 
+*** The parameters are syntactically distinguished by the leading
+*** '#' symbol and by being fully capitalized.
+***
+)
+mod PARAMS is
+    protecting SAMPLER .
+
+    ---- Runtime limit of a single macro step in the simulation 
+    ---- (in logical time units -- or slots in our case as the 
+    ---- length of a time slot is exactly one logical time unit)
+    ---- e.g. 1000.0 time units (or time slots)
+	op #SIM-TIME-LIMIT : -> [Float] .			
+    eq #SIM-TIME-LIMIT = 100.0 .
+
+    ---- The number of steps in a cycle (or round) of the game, which is
+    ---- also the number of proposers in the list of proposers in any 
+    ---- round. 
+    op #CYCLE-LENGTH : -> [Nat] .   
+    eq #CYCLE-LENGTH = 10 .
+
+    ---- Initial size of the list of approved validators (the list  
+    ---- from which #CYCLE-LENGTH proposers are sampled at the beginning
+    ---- of a round). Note that if the validator list is dynamic, the 
+    ---- actual size of the validator list during protocol execution 
+    ---- may be higher or lower than this initial value. The value  
+    ---- can be specified as an absolute value (e.g. 10000) or as a 
+    ---- multiple of the size of the proposers list #CYCLE-LENGTH 
+    ---- (e.g. 100 * #CYCLE-LENGTH)
+    op #INIT-VLIST-SIZE : -> [Nat] .               
+    eq #INIT-VLIST-SIZE = 1000 * #CYCLE-LENGTH .
+
+    ---- Maximum seed value: this is fixed to the maximum allowed by 
+    ---- Maude's implementation of the (pseudo-)random function random()
+    op #MAX-SEED-VALUE : -> [Nat] .         
+    eq #MAX-SEED-VALUE = 4294967295 .
+
+    ---- Probability of a validator being compromised (controlled by the 
+    ---- attacker), e.g. 0.2 means that, on average, 20% of validators are
+    ---- attacker-controlled
+    op #ATTACK-PROB : -> [Float] .  		
+    eq #ATTACK-PROB = 0.5 .
+ 
+    ---- The score function the attacker is trying to optimize for. 
+    ---- There are two score functions: 
+    ---- 1. countCompromised(L): which counts the total number of 
+    ----    compromised proposers among the proposers list L (regardless
+    ----    of where they actually appear in L). For example, assuming 
+    ----    only proposers v(3), v(5) and v(6) are compromised, we have 
+    ----    countCompromised(1 . 2 . 3 . 4 . 5 . 6) = 3.
+    ---- 2. countCompromisedTail(L): which counts the number of 
+    ----    compromised proposers occupying the tail of the list L (the
+    ----    length of the compromised tail of the list). For instance, 
+    ----    for the example above, we have 
+    ----    countCompromisedTail(1 . 2 . 3 . 4 . 5 . 6) = 2 (since
+    ----    the compromised tail consists of v(5) and v(6)). 
+    ---- 0 denotes countCompromised, while 1 denotes countCompromisedTail
+    op #SCORE-FUNCTION : -> [Nat] .         
+    eq #SCORE-FUNCTION = 1 .
+
+    ---- One-way message transmission delay (0.0 means instantaneous 
+    ---- message delivery, and thus synchronous communication). 
+    ---- Transmission delays are typically uniformly sampled from a 
+    ---- reasonable range that represents the actual network latency.
+    op #TRANSMISSION-DELAY : -> [Float] .               
+    eq #TRANSMISSION-DELAY = genRandom(0.01, 0.1) .
+
+    ---- A flag indicating wether a scheduled message is to be dropped
+    ---- modeling a potentially unreliable communication network.
+    ---- 0 means "not to be dropped", while 1 means "to be dropped".
+    ---- Message drops in a realistic communication medium can be modeled 
+    ---- by a Bernoulli distribution with a (drop) probability p
+    op #MSG-DROP-PROB : -> [Nat] .                  
+    eq #MSG-DROP-PROB = 0 .
+
+    ---- A flag indicating whether the validator list is dynamic, allowing
+    ---- new validators to join in during the execution of the protocol, or 
+    ---- not. 
+    op #DYNAMIC-VLIST? : -> [Bool] .
+    eq #DYNAMIC-VLIST? = false .
+
+    ---- The arrival delay of new validators joining the network (relevant 
+    ---- only when #DYNAMIC-VLIST? is true). The delay is usually sampled 
+    ---- form an appropriate distribution (typically the exponential 
+    ---- distribution)
+    op #VARRIVAL-DELAY : -> [Float] .
+    eq #VARRIVAL-DELAY = sampleExpWithMean(1.5) .
+
+    ---- The size in Ether of a validator's deposit to join the network.
+    ---- This has no significant role in the current version of the 
+    ---- specification and can safely be ignored. 
+    op #DEPOSIT-SIZE : -> [Int] .
+    eq #DEPOSIT-SIZE = 32 .
+
+endm

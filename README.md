@@ -20,6 +20,15 @@ Although the RANDAO process itself is mostly deterministic, there are a few impo
 2. Uncertainty in attacker behavior is probabilistically captured, based on a suitable attack model.
 3. Environment uncertainties, such as transmission delays and network failures, are also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
 
+## The Standard vs. Minimal Versions of the Model
+
+In addition to the *standard* version of the model, which is somewhat detailed, we give a *minimal* abstract version of the model is that is much more efficiently executable for the purposes of statistical model checking analysis of the system. The two versions of the model are given in the **/maude-specs** directory. 
+
+The main difference compared with the standard version is the assumption made in the minimal version that a reveal that reaches the RANDAO object on time always passes the commit (hash) check, and thus there is no need to explicitly verify that the revealed seed matches its commit. Therefore, in this minimal version, the only ways in which a reveal failure could occur are: (1) the reveal reaches the RANDAO object too late, or (2) the reveal was actually skipped. This assumption simplifies the specifications in several ways (simpler configuration structures and much fewer computations), resulting in a much more efficiently executable specification, especially for large instances of the system. Other than this assumption, however, everything else is the same. For more details on how these two versions of the model differ, please refer to the technical report:
+
+<img src="resources/pdf-icon.png" alt="PDF" width="2%" /> *[Formal Analysis of RANDAO's Resilience Against Pre-computed Strategies](https://github.com/runtimeverification/rdao-smc/blob/master/report/rdao-analysis.pdf)*
+
+
 ## Running Simulations
 
 The model can be readily used to obtain sample runs of the protocol. The model is primarily specified in three files:
