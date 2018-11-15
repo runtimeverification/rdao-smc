@@ -176,7 +176,7 @@ The last command initiates the verification task and may take a while to execute
 
 ## Getting Help
 
-For inquiries or to report problems, feel free to drop me an email.
+For inquiries or to report problems, feel free to report github issues or to contact us.
 
 
 
