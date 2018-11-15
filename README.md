@@ -5,8 +5,6 @@ In this document, we describe generally the model, and outline how the model may
 
 <img src="resources/pdf-icon.png" alt="PDF" width="2%" /> *[Formal Analysis of RANDAO's Resilience Against Pre-computed Strategies](https://github.com/runtimeverification/rdao-smc/blob/master/report/rdao-analysis.pdf)*
 
-*This is part of work being done at Runtime Verificaiton Inc.*
-
 ## Model Basics
 The model uses a representation of actors in rewriting logic, in which each uniquely identifiable actor models either a physical entity (like a node) or a virtual one (such as an attacker controlling a set of validators) and reacts to incoming messages by updating its internal state, emitting new messages and/or spawning new actors. The model is **real-time**, where the time domain is modeled by the field of reals, and every event is timestamped. 
 
@@ -21,13 +19,11 @@ Although the RANDAO process itself is mostly deterministic, there are a few impo
 3. Environment uncertainties, such as transmission delays and network failures, are also captured with probabilities, governed by reasonable assumptions that can be made about the environment.
 
 ## The Standard vs. Minimal Versions of the Model
-
 In addition to the *standard* version of the model, which is somewhat detailed, we give a *minimal* abstract version of the model is that is much more efficiently executable for the purposes of statistical model checking analysis of the system. The two versions of the model are given in the **/maude-specs** directory. 
 
 The main difference compared with the standard version is the assumption made in the minimal version that a reveal that reaches the RANDAO object on time always passes the commit (hash) check, and thus there is no need to explicitly verify that the revealed seed matches its commit. Therefore, in this minimal version, the only ways in which a reveal failure could occur are: (1) the reveal reaches the RANDAO object too late, or (2) the reveal was actually skipped. This assumption simplifies the specifications in several ways (simpler configuration structures and much fewer computations), resulting in a much more efficiently executable specification, especially for large instances of the system. Other than this assumption, however, everything else is the same. For more details on how these two versions of the model differ, please refer to the technical report:
 
 <img src="resources/pdf-icon.png" alt="PDF" width="2%" /> *[Formal Analysis of RANDAO's Resilience Against Pre-computed Strategies](https://github.com/runtimeverification/rdao-smc/blob/master/report/rdao-analysis.pdf)*
-
 
 ## Running Simulations
 
@@ -37,7 +33,7 @@ The model can be readily used to obtain sample runs of the protocol. The model i
 2. **rdao-params.maude**, a module in which all model parameters are specified,
 3. **rdao.maude**, a specification of the different RANDAO actors and their actions. 
 
-The specifications can be found in the **/specs** directory. 
+The specifications can be found in the **/maude-specs** directory (each of the two versions of the model resides in its own clearly labeled subdirectory). 
 
 The model parameters are declared as Maude operators, and are given values using Maude equations given in the module `PARAMS` in **rdao-params.maude**. Different scenarios can be investigated by changing the values in this module.
 
@@ -45,12 +41,12 @@ A fairly recent version of Maude ([Maude 2.4](http://maude.cs.illinois.edu/ "Mau
 
 Once Maude is installed and added to `PATH`, one may run simulations by following the steps below:
 
-1. Switch to the **/specs** directory, and run Maude to get into its prompt `Maude>`.
+1. Switch to the **/maude-specs/minimal-model** directory (or the **/maude-specs/standard-model** if you wish to work with the standard version of the model), and run Maude to get into its prompt `Maude>`.
 2. Issue the command: `set clear rules off .` to explicitly ask Maude to maintain its state between command runs (this is necessary for pseudo-random number generation).
 3. load the model files: `load apmaude.maude` and then `load rdao.maude`.
 4. Use the rewrite command to obtain a sample run: `rew tick(initState) .`. The result is a configuration term that specifies the final state of the protocol session (as determined by the `#SIM-TIME-LIMIT` parameter). You may repeat the command to obtain potentially different runs of the protocol.
 
-The directory **/specs** includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the `print` attribute, which can show a complete log of events generated in the sample run.
+The directory **/maude-specs/minimal-model** (and similarly **/maude-specs/standard-model**) includes a Maude script named **rdao-tests.maude** that automates the steps above. The script also includes a directive to enable the `print` attribute, which can show a complete log of events generated in the sample run.
 
 ## Changing the Model Parameters
 
