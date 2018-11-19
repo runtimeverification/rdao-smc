@@ -176,6 +176,6 @@ The last command initiates the verification task and may take a while to execute
 
 ## Getting Help
 
-Feel free to report GitHub issues or to contact us at: [contact@runtimeverification.com](contact@runtimeverification.com).
+Feel free to report GitHub issues or to contact us at: [contact@runtimeverification.com](mailto:contact@runtimeverification.com).
 
 
