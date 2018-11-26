@@ -1,0 +1,244 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{15}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{}, \showDOI{}, and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showDOI}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showDOI #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showDOI      \undefined \def \showDOI       #1{#1}\fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{Agha, Meseguer, and Sen}{Agha
+  et~al\mbox{.}}{2006}]%
+        {AghaAMS:2006}
+\bibfield{author}{\bibinfo{person}{Gul Agha}, \bibinfo{person}{Jos\'{e}
+  Meseguer}, {and} \bibinfo{person}{Koushik Sen}.}
+  \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{{PM}aude: Rewrite-based Specification Language for
+  Probabilistic Object Systems}.
+\newblock \bibinfo{journal}{\emph{Electronic Notes in Theoretical Computer
+  Science}} \bibinfo{volume}{153}, \bibinfo{number}{2} (\bibinfo{year}{2006}),
+  \bibinfo{pages}{213--239}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Alturki and Meseguer}{Alturki and
+  Meseguer}{2011}]%
+        {AlturkiAM:2011}
+\bibfield{author}{\bibinfo{person}{Musab~A. Alturki} {and}
+  \bibinfo{person}{Jos{\'e} Meseguer}.} \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{{PVeStA}: A Parallel Statistical Model Checking and
+  Quantitative Analysis Tool}.
+\newblock In \bibinfo{booktitle}{\emph{Algebra and Coalgebra in Computer
+  Science}}, \bibfield{editor}{\bibinfo{person}{Andrea Corradini},
+  \bibinfo{person}{Bartek Klin}, {and} \bibinfo{person}{Corina C{\^\i}rstea}}
+  (Eds.). \bibinfo{series}{Lecture Notes in Computer Science},
+  Vol.~\bibinfo{volume}{6859}. \bibinfo{publisher}{Springer Berlin /
+  Heidelberg}, \bibinfo{pages}{386--392}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Boneh, Bonneau, B{\"u}nz, and Fisch}{Boneh
+  et~al\mbox{.}}{2018}]%
+        {BonehBBBF:2018}
+\bibfield{author}{\bibinfo{person}{D. Boneh}, \bibinfo{person}{J. Bonneau},
+  \bibinfo{person}{B. B{\"u}nz}, {and} \bibinfo{person}{B. Fisch}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Verifiable Delay Functions}. In
+  \bibinfo{booktitle}{\emph{In proceedings of Crypto 2018}}.
+  \bibinfo{pages}{757--788}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Bruni and Meseguer}{Bruni and
+  Meseguer}{2006}]%
+        {BruniBM:2006}
+\bibfield{author}{\bibinfo{person}{Roberto Bruni} {and}
+  \bibinfo{person}{Jos{\'e} Meseguer}.} \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{Semantic foundations for generalized rewrite
+  theories}.
+\newblock \bibinfo{journal}{\emph{Theor. Comput. Sci.}} \bibinfo{volume}{360},
+  \bibinfo{number}{1-3} (\bibinfo{year}{2006}), \bibinfo{pages}{386--414}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Buterin}{Buterin}{2018a}]%
+        {ButerinB:2018b}
+\bibfield{author}{\bibinfo{person}{Vitalik Buterin}.}
+  \bibinfo{year}{2018}\natexlab{a}.
+\newblock \bibinfo{title}{RANDAO beacon exploitability analysis, round 2}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://ethresear.ch/t/randao-beacon-exploitability-analysis-round-2/1980}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Buterin}{Buterin}{2018b}]%
+        {ButerinB:2018a}
+\bibfield{author}{\bibinfo{person}{Vitalik Buterin}.}
+  \bibinfo{year}{2018}\natexlab{b}.
+\newblock \bibinfo{title}{RNG exploitability analysis assuming pure
+  RANDAO-based main chain}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://ethresear.ch/t/rng-exploitability-analysis-assuming-pure-randao-based-main-chain/1825}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Buterin}{Buterin}{2018c}]%
+        {ButerinB:2018}
+\bibfield{author}{\bibinfo{person}{Vitalik Buterin}.}
+  \bibinfo{year}{2018}\natexlab{c}.
+\newblock \bibinfo{title}{Validator Ordering and Randomness in PoS}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://vitalik.ca/files/randomness.html}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Clavel, Dur{\'a}n, Eker, Lincoln,
+  Mart\'{\i}-Oliet, Meseguer, and Talcott}{Clavel et~al\mbox{.}}{2007}]%
+        {ClavelCDELMMT:2007}
+\bibfield{author}{\bibinfo{person}{Manuel Clavel}, \bibinfo{person}{Francisco
+  Dur{\'a}n}, \bibinfo{person}{Steven Eker}, \bibinfo{person}{Patrick Lincoln},
+  \bibinfo{person}{Narciso Mart\'{\i}-Oliet}, \bibinfo{person}{Jos\'{e}
+  Meseguer}, {and} \bibinfo{person}{Carolyn Talcott}.}
+  \bibinfo{year}{2007}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{All About Maude - A High-Performance
+  Logical Framework}}. \bibinfo{series}{Lecture Notes in Computer Science},
+  Vol.~\bibinfo{volume}{4350}.
+\newblock \bibinfo{publisher}{Springer-Verlag}, \bibinfo{address}{Secaucus, NJ,
+  USA}.
+\newblock
+\showISBNx{3540719407}
+
+
+\bibitem[\protect\citeauthoryear{Foundation}{Foundation}{2018}]%
+        {EF:2018}
+\bibfield{author}{\bibinfo{person}{Ethereum Foundation}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \bibinfo{title}{Ethereum 2.0 spec---Casper and sharding}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://github.com/ethereum/eth2.0-specs/blob/master/specs/beacon-chain.md}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Kumar, Sen, Meseguer, and Agha}{Kumar
+  et~al\mbox{.}}{2003}]%
+        {KumarKSMA:2003}
+\bibfield{author}{\bibinfo{person}{Nirman Kumar}, \bibinfo{person}{Koushik
+  Sen}, \bibinfo{person}{Jos{\'e} Meseguer}, {and} \bibinfo{person}{Gul Agha}.}
+  \bibinfo{year}{2003}\natexlab{}.
+\newblock \showarticletitle{A Rewriting Based Model for Probabilistic
+  Distributed Object Systems.}. In \bibinfo{booktitle}{\emph{Proc. of {FMOODS}
+  '03}} \emph{(\bibinfo{series}{Lecture Notes in Computer Science})},
+  Vol.~\bibinfo{volume}{2884}. \bibinfo{publisher}{Springer},
+  \bibinfo{pages}{32--46}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Meseguer}{Meseguer}{1990}]%
+        {MeseguerM:1990}
+\bibfield{author}{\bibinfo{person}{Jos\'{e} Meseguer}.}
+  \bibinfo{year}{1990}\natexlab{}.
+\newblock \showarticletitle{Rewriting as a Unified Model of Concurrency}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the Concur'90 Conference, Amsterdam,
+  August 1990}} \emph{(\bibinfo{series}{Lecture Notes in Computer Science})},
+  Vol.~\bibinfo{volume}{458}. \bibinfo{publisher}{Springer},
+  \bibinfo{pages}{384--400}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Meseguer}{Meseguer}{1992}]%
+        {MeseguerM:1992}
+\bibfield{author}{\bibinfo{person}{Jos{\'e} Meseguer}.}
+  \bibinfo{year}{1992}\natexlab{}.
+\newblock \showarticletitle{Conditional rewriting logic as a unified model of
+  concurrency}.
+\newblock \bibinfo{journal}{\emph{Theor. Comput. Sci.}} \bibinfo{volume}{96},
+  \bibinfo{number}{1} (\bibinfo{year}{1992}), \bibinfo{pages}{73--155}.
+\newblock
+\showISSN{0304-3975}
+\urldef\tempurl%
+\url{https://doi.org/10.1016/0304-3975(92)90182-F}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Meseguer}{Meseguer}{1998}]%
+        {MeseguerM:1998}
+\bibfield{author}{\bibinfo{person}{Jos\'e Meseguer}.}
+  \bibinfo{year}{1998}\natexlab{}.
+\newblock \showarticletitle{Membership algebra as a logical framework for
+  equational specification}. In \bibinfo{booktitle}{\emph{Proc. {WADT'97}}}
+  \emph{(\bibinfo{series}{Lecture Notes in Computer Science})},
+  \bibfield{editor}{\bibinfo{person}{F.~Parisi-Presicce}} (Ed.),
+  Vol.~\bibinfo{volume}{1376}. \bibinfo{publisher}{Springer},
+  \bibinfo{pages}{18--61}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Qian}{Qian}{2018}]%
+        {QianQ:2018}
+\bibfield{author}{\bibinfo{person}{Youcai Qian}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \bibinfo{title}{RANDAO: A DAO working as RNG of Ethereum}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://github.com/randao/randao/}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Sen, Kumar, Meseguer, and Agha}{Sen
+  et~al\mbox{.}}{2003}]%
+        {SenSKMA:2003}
+\bibfield{author}{\bibinfo{person}{Koushik Sen}, \bibinfo{person}{Nirman
+  Kumar}, \bibinfo{person}{Jose Meseguer}, {and} \bibinfo{person}{Gul Agha}.}
+  \bibinfo{year}{2003}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{Probabilistic Rewrite Theories: Unifying
+  Models, Logics and Tools}}.
+\newblock \bibinfo{type}{{T}echnical {R}eport} UIUCDCS-R-2003-2347.
+  \bibinfo{institution}{University of Illinois at Urbana Champaign}.
+\newblock
+
+
+\end{thebibliography}

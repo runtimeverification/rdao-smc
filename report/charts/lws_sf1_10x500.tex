@@ -1,0 +1,167 @@
+\begin{tikzpicture}
+\begin{axis}[
+    title={},
+    xlabel={Time Slots}, % ($\times 100$},
+    ylabel={Expected Number of Proposers},
+    xmin=100, xmax=1000,
+    ymin=0.0, ymax=2.0,
+    xtick={200,400,600,800,1000},
+    ytick={0.5,1.0,1.5,2.0},
+    legend pos=north east,
+    ymajorgrids=true,
+    grid style=dashed,
+]
+
+\addplot[
+	smooth,
+    name path=f01,
+    color=gray,
+    mark=square,
+    ]
+    coordinates {
+(100.0 ,0.1269)
+(200.0 ,0.1142)
+ (300.0 ,0.1175)
+(400.0 ,0.1172)
+ (500.0 ,0.1209)
+(600.0 ,0.1270)
+ (700.0 ,0.1502)
+ (800.0 ,0.1803)
+ (900.0 ,0.2103)
+(1000.0 ,0.2009)
+    };
+    \addlegendentry[text width=1cm]{$\alpha = 0.1$}
+\draw[gray,dashed,thick] (axis cs:100, 0.1111) -- (axis cs:1000, 0.1111);
+\path[name path=b01] (axis cs:100, 0.1111) -- (axis cs:1000, 0.1111);
+
+    \addplot [
+        thick,
+        color=gray,
+        fill=gray, 
+        fill opacity=0.1,
+        forget plot
+    ]
+    fill between[
+        of=f01 and b01,
+        soft clip second={domain=100:1000}
+    ];
+    
+\addplot[
+	smooth,
+    name path=f02,
+    color=red,
+    mark=diamond,
+    ]
+    coordinates {
+(100.0 ,0.3073)
+(200.0 ,0.3230)
+(300.0 ,0.3290)
+(400.0 ,0.3392)
+(500.0 ,0.3243)
+(600.0 ,0.3233)
+(700.0 ,0.3293)
+ (800.0 ,0.3312) 	%
+ (900.0 ,0.3293)	%
+ (1000.0 ,0.3401)	%
+    };
+    \addlegendentry[text width=1cm]{$\alpha = 0.2$}
+\draw[red,dashed,thick] (axis cs:100, 0.2499) -- (axis cs:1000, 0.2499);
+\path[name path=b02] (axis cs:100, 0.2499) -- (axis cs:1000, 0.2499);
+
+    \addplot [
+        thick,
+        color=red,
+        fill=red, 
+        fill opacity=0.1,
+        forget plot
+    ]
+    fill between[
+        of=f02 and b02,
+        soft clip second={domain=100:1000}
+    ];
+    
+\addplot[
+	smooth,
+    name path=f03,
+    color=magenta,
+    mark=star,
+    ]
+    coordinates {
+(100.0 ,0.7031)
+(200.0 ,0.6770)
+(300.0 ,0.6881)
+(400.0 ,0.7324)
+(500.0 ,0.7436)
+(600.0 ,0.6991)
+(700.0 ,0.7039)
+(800.0 ,0.7045)
+(900.0 ,0.7399)
+(1000.0 ,0.6426)
+    };
+    \addlegendentry[text width=1cm]{$\alpha = 0.3$}
+\draw[magenta,dashed,thick] (axis cs:100, 0.4284) -- (axis cs:1000, 0.4284);
+\path[name path=b03] (axis cs:100, 0.4284) -- (axis cs:1000, 0.4284);
+
+    \addplot [
+        thick,
+        color=magenta,
+        fill=magenta, 
+        fill opacity=0.1,
+        forget plot
+    ]
+    fill between[
+        of=f03 and b03,
+        soft clip second={domain=100:1000}
+    ];
+    
+%\addplot[
+%	smooth,
+%    color=blue,
+%    mark=+,
+%    ]
+%    coordinates {
+%(10.0 ,0)
+%(50.0 ,0)
+%(100.0 ,0)
+%(500.0 ,0)
+%(1000.0 ,0)
+%    };
+%    \addlegendentry[text width=1cm]{$\alpha = 0.4$}
+%
+%\addplot[
+%	smooth, tension=0.2,
+%    color=brown,
+%    mark=pentagon,
+%    ]
+%    coordinates {
+%(10.0 ,0)
+%(50.0 ,0)
+%(100.0 ,0)
+%(500.0 ,0)
+%(1000.0 ,0)
+%    };
+%    \addlegendentry[text width=1cm]{$\alpha = 0.5$}
+
+%\addplot[
+%	smooth, tension=0.2,
+%    color=cyan,
+%    mark=*,
+%    ]
+%    coordinates {
+%(1 ,0.0000)
+%(5 ,0.7879)
+%(10 ,0.8540)
+%(15 ,0.8807)
+%(20 ,0.9077)
+%(25 ,0.9253)
+%(30 ,0.9356)
+%(35 ,0.9497)
+%(40 ,0.9619)
+%(45 ,0.9648)
+%(50 ,1.0000)
+%    };
+%    \addlegendentry[text width=1cm]{AG}
+
+
+\end{axis}
+\end{tikzpicture}
