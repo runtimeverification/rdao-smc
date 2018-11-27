@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{15}
+\begin{thebibliography}{16}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -148,10 +148,24 @@
 \showISBNx{3540719407}
 
 
-\bibitem[\protect\citeauthoryear{Foundation}{Foundation}{2018}]%
+\bibitem[\protect\citeauthoryear{Foundation}{Foundation}{2018a}]%
+        {EFGrants03:2018}
+\bibfield{author}{\bibinfo{person}{Ethereum Foundation}.}
+  \bibinfo{year}{2018}\natexlab{a}.
+\newblock \bibinfo{title}{Announcing Beneficiaries of the Ethereum Foundation
+  Grants}.
+\newblock
+\newblock
+\urldef\tempurl%
+\url{https://blog.ethereum.org/2018/03/07/announcing-beneficiaries-ethereum-foundation-grants}
+\showURL{%
+\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Foundation}{Foundation}{2018b}]%
         {EF:2018}
 \bibfield{author}{\bibinfo{person}{Ethereum Foundation}.}
-  \bibinfo{year}{2018}\natexlab{}.
+  \bibinfo{year}{2018}\natexlab{b}.
 \newblock \bibinfo{title}{Ethereum 2.0 spec---Casper and sharding}.
 \newblock
 \newblock
